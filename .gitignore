@@ -1,5 +1,5 @@
 /.pytest_cache
 /.vscode
-/data.csv
-/data.xlsx
+/*.csv
+/*.xlsx
 /__pycache__
