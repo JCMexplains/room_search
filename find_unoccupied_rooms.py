@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, time
 from typing import List, Tuple
 
@@ -80,7 +81,7 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
 
     # Read CSV file
     df = pd.read_csv(
-        "data.csv",
+        os.path.join("data", "data.csv"),
         dtype=dtypes,
         skipinitialspace=True,
     )
