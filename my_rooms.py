@@ -1,22 +1,27 @@
-# List of tuples containing (Building, Room) pairs
-# Both Building and Room are represented as integers
+import os
+import pandas as pd
 
-MY_ROOMS = [
-    (3, 113),
-    (5, 103),
-    (5, 104),
-    (5, 105),
-    (5, 106),
-    (5, 111),
-    (5, 113),
-    (5, 211),
-    (5, 212),
-    (5, 215),
-    (9, 230),
-    (15, 103),
-    (22, 152),
-]
+# Path to the CSV file
+csv_path = os.path.join(os.path.dirname(__file__), 'data', 'data.csv')
 
+# Read the CSV file
+df = pd.read_csv(csv_path)
+
+# Create MY_ROOMS list from the DataFrame
+MY_ROOMS = df[['building', 'room_number', 'room_cap']].drop_duplicates().values.tolist()
+
+def get_room_capacity(building, room):
+    """
+    Get the capacity of a given room in a building.
+
+    :param building: The building number (integer)
+    :param room: The room number (integer)
+    :return: The room capacity (integer) or 'Unknown' if not found
+    """
+    for b, r, capacity in MY_ROOMS:
+        if b == building and r == room:
+            return capacity
+    return 'Unknown'
 
 def is_valid_room(building, room):
     """
@@ -26,4 +31,4 @@ def is_valid_room(building, room):
     :param room: The room number (integer)
     :return: True if the combination is in MY_ROOMS, False otherwise
     """
-    return (building, room) in MY_ROOMS
+    return any(b == building and r == room for b, r, _ in MY_ROOMS)
