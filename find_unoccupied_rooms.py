@@ -2,7 +2,6 @@ from datetime import datetime, time
 from typing import List, Tuple
 
 import pandas as pd
-import os
 
 from my_rooms import MY_ROOMS
 from time_blocks import fall_spring_blocks as fall_spring_blocks_str
@@ -79,12 +78,9 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
         "term": int,
     }
 
-    # Update the CSV file path
-    csv_path = os.path.join(os.path.dirname(__file__), 'data', 'data.csv')
-    
     # Read CSV file
     df = pd.read_csv(
-        csv_path,
+        "data.csv",
         dtype=dtypes,
         skipinitialspace=True,
     )

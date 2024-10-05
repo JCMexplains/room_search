@@ -1,17 +1,14 @@
 import tkinter as tk
 from tkinter import ttk
-import json
-import os
-from my_rooms import MY_ROOMS, get_room_capacity
+
 from find_unoccupied_rooms import find_unoccupied_rooms
+from my_rooms import MY_ROOMS
+
 
 class RoomSearchGUI:
     def __init__(self, master):
         self.master = master
         master.title("Room Search")
-
-        self.settings_file = os.path.join(os.path.dirname(__file__), 'data', 'settings.txt')
-        self.load_settings()
 
         # Days
         self.days_frame = ttk.LabelFrame(master, text="Days")
@@ -19,64 +16,26 @@ class RoomSearchGUI:
         self.days = ["M", "T", "W", "R", "F", "S"]
         self.day_vars = {}
         for day in self.days:
-            var = tk.BooleanVar(value=self.settings['days'].get(day, True))
-            ttk.Checkbutton(self.days_frame, text=day, variable=var, command=self.save_settings).pack(side="left")
+            var = tk.BooleanVar(value=True)
+            ttk.Checkbutton(self.days_frame, text=day, variable=var).pack(side="left")
             self.day_vars[day] = var
 
         # Rooms
         self.rooms_frame = ttk.LabelFrame(master, text="Rooms")
-        self.rooms_frame.pack(padx=10, pady=10, fill="x", expand=True)
+        self.rooms_frame.pack(padx=10, pady=10, fill="x")
         self.room_vars = {}
-        
-        # Create a canvas with a scrollbar for the rooms
-        self.canvas = tk.Canvas(self.rooms_frame)
-        self.scrollbar = ttk.Scrollbar(self.rooms_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = ttk.Frame(self.canvas)
-
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
-
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        for building, room, _ in MY_ROOMS:
-            var = tk.BooleanVar(value=self.settings['rooms'].get(f"{building}-{room}", True))
-            capacity = get_room_capacity(building, room)
+        for building, room in MY_ROOMS:
+            var = tk.BooleanVar(value=True)
             ttk.Checkbutton(
-                self.scrollable_frame, 
-                text=f"Building {building}, Room {room} (Capacity: {capacity})", 
-                variable=var,
-                command=self.save_settings
+                self.rooms_frame, text=f"{building}-{room}", variable=var
             ).pack(anchor="w")
             self.room_vars[(building, room)] = var
-
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
 
         # Submit Button
         self.submit_button = ttk.Button(
             master, text="Find Unoccupied Rooms", command=self.submit
         )
         self.submit_button.pack(pady=20)
-
-    def load_settings(self):
-        if os.path.exists(self.settings_file):
-            with open(self.settings_file, 'r') as f:
-                self.settings = json.load(f)
-        else:
-            self.settings = {'days': {}, 'rooms': {}}
-
-    def save_settings(self):
-        settings = {
-            'days': {day: var.get() for day, var in self.day_vars.items()},
-            'rooms': {f"{building}-{room}": var.get() for (building, room), var in self.room_vars.items()}
-        }
-        with open(self.settings_file, 'w') as f:
-            json.dump(settings, f)
 
     def submit(self):
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
