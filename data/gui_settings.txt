@@ -1,1 +1,1 @@
-{"days": {"M": true, "T": true, "W": true, "R": true, "F": false, "S": false}, "rooms": {"3,113": true, "5,103": true, "5,104": true, "5,105": true, "5,106": true, "5,111": true, "5,113": true, "5,211": false, "5,212": true, "5,215": true, "9,230": true, "15,103": true, "22,152": false}}
+{"days": {"M": false, "T": true, "W": false, "R": true, "F": false, "S": false}, "rooms": {"3,113": true, "5,103": true, "5,104": true, "5,105": true, "5,106": true, "5,111": true, "5,113": true, "5,211": false, "5,212": true, "5,215": true, "9,230": true, "15,103": true, "22,152": false}}

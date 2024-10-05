@@ -2,4 +2,5 @@
 /.vscode
 /*.csv
 /*.xlsx
+/gui_settings.txt
 /__pycache__
