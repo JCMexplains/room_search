@@ -1,9 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 
-import find_unoccupied_rooms
+from find_unoccupied_rooms import find_unoccupied_rooms
 from my_rooms import MY_ROOMS
-from time_blocks import fall_spring_blocks, summer_blocks
 
 
 class RoomSearchGUI:
@@ -14,7 +13,7 @@ class RoomSearchGUI:
         # Days
         self.days_frame = ttk.LabelFrame(master, text="Days")
         self.days_frame.pack(padx=10, pady=10, fill="x")
-        self.days = ["M", "T", "W", "R", "F"]
+        self.days = ["M", "T", "W", "R", "F", "S"]
         self.day_vars = {}
         for day in self.days:
             var = tk.BooleanVar(value=True)
@@ -32,17 +31,6 @@ class RoomSearchGUI:
             ).pack(anchor="w")
             self.room_vars[(building, room)] = var
 
-        # Time Blocks
-        self.blocks_frame = ttk.LabelFrame(master, text="Time Blocks")
-        self.blocks_frame.pack(padx=10, pady=10, fill="x")
-        self.block_vars = {}
-        for start, end in fall_spring_blocks:
-            var = tk.BooleanVar(value=True)
-            ttk.Checkbutton(
-                self.blocks_frame, text=f"{start}-{end}", variable=var
-            ).pack(anchor="w")
-            self.block_vars[(start, end)] = var
-
         # Submit Button
         self.submit_button = ttk.Button(
             master, text="Find Unoccupied Rooms", command=self.submit
@@ -52,17 +40,38 @@ class RoomSearchGUI:
     def submit(self):
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
         selected_rooms = [room for room, var in self.room_vars.items() if var.get()]
-        selected_blocks = [block for block, var in self.block_vars.items() if var.get()]
 
-        # Here you would call find_unoccupied_rooms with the selected options
-        # For now, let's just print the selections
-        print("Selected Days:", selected_days)
-        print("Selected Rooms:", selected_rooms)
-        print("Selected Time Blocks:", selected_blocks)
+        # Call find_unoccupied_rooms with these selections
+        unoccupied_slots = find_unoccupied_rooms(selected_days, selected_rooms)
 
-        # TODO: Call find_unoccupied_rooms with these selections
-        # result = find_unoccupied_rooms(selected_days, selected_rooms, selected_blocks)
-        # Display result (you might want to create a new window or text area for this)
+        # Display results
+        self.display_results(unoccupied_slots)
+
+    def display_results(self, unoccupied_slots):
+        # Create a new window to display results
+        results_window = tk.Toplevel(self.master)
+        results_window.title("Unoccupied Rooms")
+
+        # Create a text widget to display results
+        text_widget = tk.Text(results_window, wrap=tk.WORD)
+        text_widget.pack(expand=True, fill=tk.BOTH)
+
+        # Insert results into the text widget
+        for (building, room), days in unoccupied_slots.items():
+            text_widget.insert(tk.END, f"\nBuilding {building}, Room {room}:\n")
+            for day, unoccupied_blocks in days.items():
+                text_widget.insert(tk.END, f"  {day} unoccupied time blocks:\n")
+                if unoccupied_blocks:
+                    for start, end in sorted(unoccupied_blocks):
+                        text_widget.insert(
+                            tk.END,
+                            f"    {start.strftime('%H:%M')} - {end.strftime('%H:%M')}\n",
+                        )
+                else:
+                    text_widget.insert(tk.END, "    Fully occupied\n")
+
+        # Make the text widget read-only
+        text_widget.config(state=tk.DISABLED)
 
 
 if __name__ == "__main__":

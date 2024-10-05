@@ -57,7 +57,7 @@ def parse_time(time_str):
         return None
 
 
-def main():
+def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
     # Define column types
     dtypes = {
         "building": int,
@@ -74,7 +74,7 @@ def main():
         "session": int,
         "start_date": str,
         "start_time": str,
-        "end_time": str,  # Changed from str to object
+        "end_time": str,
         "term": int,
     }
 
@@ -96,56 +96,58 @@ def main():
     day_columns = df["days"].apply(expand_days)
     df = pd.concat([df.drop("days", axis=1), day_columns], axis=1)
 
+    # Use selected options or default to all if not provided
+    selected_days = selected_days or list("MTWRFS")
+    selected_rooms = selected_rooms or MY_ROOMS
+
     # Initialize occupancy dictionary
     occupancy = {
-        (building, room): {day: set() for day in "MTWRFS"}
-        for building, room in MY_ROOMS
+        (building, room): {day: set() for day in selected_days}
+        for building, room in selected_rooms
     }
 
     # Fill occupancy dictionary
     for _, row in df.iterrows():
         building = row["building"]
         room = row["room_number"] if pd.notna(row["room_number"]) else None
-        if (building, room) in MY_ROOMS:
+        if (building, room) in selected_rooms:
             blocks = summer_blocks if is_summer(row["term"]) else fall_spring_blocks
 
-            # Debug print
-            # print(
-            #     f"Debug: Processing row - Building: {building}, Room: {room}, Start: {row['start_time']}, End: {row['end_time']}"
-            # )
-
-            # Check if start_time and end_time are not None
             if row["start_time"] is not None and row["end_time"] is not None:
                 for block_start, block_end in blocks:
                     if class_in_block(
                         row["start_time"], row["end_time"], block_start, block_end
                     ):
-                        for day in "MTWRFS":
+                        for day in selected_days:
                             if row[day]:
                                 occupancy[(building, room)][day].add(
                                     (block_start, block_end)
                                 )
-                                # print(
-                                #     f"Debug: Room {building}-{room} is occupied on {day} at {block_start}-{block_end}"
-                                # )
-            else:
-                print(
-                    f"Debug: Skipping row due to None values - Start: {row['start_time']}, End: {row['end_time']}"
-                )
 
-    # Find and print unoccupied time slots
+    # Find and return unoccupied time slots
+    unoccupied_slots = {}
     for (building, room), days in occupancy.items():
-        print(f"\nBuilding {building}, Room {room}:")
+        unoccupied_slots[(building, room)] = {}
         for day, occupied_blocks in days.items():
+            unoccupied_slots[(building, room)][day] = set(blocks) - occupied_blocks
+
+    return unoccupied_slots
+
+
+def main():
+    # Default to all options selected
+    all_days = list("MTWRFS")
+    all_rooms = MY_ROOMS
+
+    unoccupied_slots = find_unoccupied_rooms(all_days, all_rooms)
+
+    # Print results
+    for (building, room), days in unoccupied_slots.items():
+        print(f"\nBuilding {building}, Room {room}:")
+        for day, unoccupied_blocks in days.items():
             print(f"  {day} unoccupied time blocks:")
-            all_blocks = (
-                summer_blocks
-                if any(is_summer(term) for term in df["term"])
-                else fall_spring_blocks
-            )
-            unoccupied = set(all_blocks) - occupied_blocks
-            if unoccupied:
-                for start, end in sorted(unoccupied):
+            if unoccupied_blocks:
+                for start, end in sorted(unoccupied_blocks):
                     print(f"    {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
             else:
                 print("    Fully occupied")
