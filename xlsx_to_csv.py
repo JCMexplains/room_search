@@ -4,9 +4,9 @@ import warnings
 import pandas as pd
 from openpyxl import styles
 
+from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 from drop_rows import drop_rows
 from rename_or_drop_columns import process_dataframe
-from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 
 
 def clean_dataframe(df):
@@ -89,6 +89,7 @@ if __name__ == "__main__":
     import os
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    input_xlsx = os.path.join(current_dir, "data.xlsx")
-    output_csv = os.path.join(current_dir, "data.csv")
+    data_dir = os.path.join(current_dir, "data")
+    input_xlsx = os.path.join(data_dir, "data.xlsx")
+    output_csv = os.path.join(data_dir, "data.csv")
     transform_xlsx_to_csv(input_xlsx, output_csv)
