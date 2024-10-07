@@ -4,9 +4,9 @@ from typing import List, Tuple
 
 import pandas as pd
 
-from my_rooms import MY_ROOMS
-from time_blocks import fall_spring_blocks as fall_spring_blocks_str
-from time_blocks import summer_blocks as summer_blocks_str
+from constants.my_rooms import MY_ROOMS
+from constants.time_blocks import fall_spring_blocks as fall_spring_blocks_str
+from constants.time_blocks import summer_blocks as summer_blocks_str
 
 
 def convert_to_time_tuples(blocks: List[Tuple[str, str]]) -> List[Tuple[time, time]]:

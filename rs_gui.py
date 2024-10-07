@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from find_unoccupied_rooms import find_unoccupied_rooms
-from my_rooms import MY_ROOMS
+from constants.my_rooms import MY_ROOMS
 
 
 class RoomSearchGUI:

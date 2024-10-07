@@ -6,7 +6,7 @@ from openpyxl import styles
 
 from drop_rows import drop_rows
 from rename_or_drop_columns import process_dataframe
-from term_session_dates import TERM_SESSION_DATES, get_dates
+from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 
 
 def clean_dataframe(df):
