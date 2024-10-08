@@ -2,6 +2,6 @@
 /.vscode
 /*.csv
 /*.xlsx
-/gui_settings.txt
 /__pycache__
+/constants/__pycache__
 /data/
