@@ -1,8 +1,42 @@
-/.pytest_cache
-/.vscode
-/*.csv
-/*.xlsx
-/__pycache__
-/constants/__pycache__
-/data/*.csv
-/data/*.xlsx    
+# Ignore all .log files
+*.log
+
+# Ignore all .tmp files
+*.tmp
+
+# Ignore all .cache files
+*.cache
+
+# Ignore all .DS_Store files (for Mac users)
+.DS_Store
+
+# Ignore all files in any directory named 'build'
+build/
+
+# Ignore all files in any directory named 'dist'
+dist/
+
+# Ignore node_modules directory
+node_modules/
+
+# Ignore all .env files
+.env*
+
+# Ignore all .pyc files
+**/*.pyc
+
+# Ignore all .class files
+**/*.class
+
+# Ignore all .swp files (Vim swap files)
+*.swp
+
+# Ignore all .vscode directories
+.vscode/
+
+# Ignore all .idea directories (for JetBrains IDEs)
+.idea//.pytest_cache
+
+*.csv
+
+*.xlsx 
