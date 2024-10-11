@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Set, Optional
 import tkinter as tk  # Add this import
 
 import pandas as pd
@@ -25,21 +25,18 @@ fall_spring_blocks = convert_to_time_tuples(fall_spring_blocks_str)
 summer_blocks = convert_to_time_tuples(summer_blocks_str)
 
 
-def is_summer(term):
+def is_summer(term: int) -> bool:
     return str(term).endswith("3")
 
 
-def class_in_block(class_start, class_end, block_start, block_end):
-    # print(
-    #     f"Debug: class_start type: {type(class_start)}, class_end type: {type(class_end)}"
-    # )
+def class_in_block(class_start: time, class_end: time, block_start: time, block_end: time) -> bool:
     start_in_block = block_start <= class_start < block_end
     end_in_block = block_start < class_end <= block_end
     spans_block = class_start <= block_start and class_end >= block_end
     return start_in_block or end_in_block or spans_block
 
 
-def expand_days(days_string):
+def expand_days(days_string: Optional[str]) -> pd.Series:
     return pd.Series(
         {
             day: day in days_string if pd.notna(days_string) else False
@@ -48,7 +45,7 @@ def expand_days(days_string):
     )
 
 
-def parse_time(time_str):
+def parse_time(time_str: Optional[str]) -> Optional[time]:
     if pd.isna(time_str):
         return None
     time_str = time_str.strip()
@@ -59,7 +56,11 @@ def parse_time(time_str):
         return None
 
 
-def find_unoccupied_rooms(selected_days=None, selected_rooms=None, selected_time_slots=None):
+def find_unoccupied_rooms(
+    selected_days: Optional[List[str]] = None,
+    selected_rooms: Optional[List[Tuple[int, int]]] = None,
+    selected_time_slots: Optional[List[Tuple[time, time]]] = None
+) -> Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
     # Define column types
     dtypes = {
         "building": int,
@@ -153,7 +154,7 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None, selected_time
     return unoccupied_slots, room_capacities, semester_blocks
 
 
-def run_room_search():
+def run_room_search() -> None:
     unoccupied_slots, room_capacities, semester_blocks = find_unoccupied_rooms()
     
     # Import the GUI class here to avoid circular imports

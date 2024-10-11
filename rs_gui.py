@@ -2,13 +2,20 @@ import json
 import os
 import tkinter as tk
 from tkinter import ttk
-
+from typing import Dict, Tuple, Set, List
+from datetime import time, datetime
 from constants.my_rooms import MY_ROOMS
-from constants.time_blocks import fall_spring_blocks, summer_blocks
+
 
 
 class RoomSearchGUI:
-    def __init__(self, master, unoccupied_slots, room_capacities, semester_blocks):
+    def __init__(
+        self,
+        master: tk.Tk,
+        unoccupied_slots: Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]],
+        room_capacities: Dict[Tuple[int, int], int],
+        semester_blocks: List[Tuple[time, time]]
+    ) -> None:
         self.master = master
         self.unoccupied_slots = unoccupied_slots
         self.room_capacities = room_capacities
@@ -64,7 +71,7 @@ class RoomSearchGUI:
         )
         self.submit_button.pack(pady=20)
 
-    def submit(self):
+    def submit(self) -> None:
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
         selected_rooms = [room for room, var in self.room_vars.items() if var.get()]
         selected_time_slots = [slot for slot, var in self.time_slot_vars.items() if var.get()]
@@ -77,7 +84,12 @@ class RoomSearchGUI:
         # Display results
         self.display_results(filtered_slots)
 
-    def filter_unoccupied_slots(self, selected_days, selected_rooms, selected_time_slots):
+    def filter_unoccupied_slots(
+        self,
+        selected_days: List[str],
+        selected_rooms: List[Tuple[int, int]],
+        selected_time_slots: List[Tuple[time, time]]
+    ) -> Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]:
         filtered = {}
         for (building, room), days in self.unoccupied_slots.items():
             if (building, room) in selected_rooms:
@@ -87,7 +99,7 @@ class RoomSearchGUI:
                         filtered[(building, room)][day] = set(slot for slot in slots if slot in selected_time_slots)
         return filtered
 
-    def save_settings(self):
+    def save_settings(self) -> None:
         settings = {
             "days": {day: var.get() for day, var in self.day_vars.items()},
             "rooms": {
@@ -95,49 +107,41 @@ class RoomSearchGUI:
                 for (building, room), var in self.room_vars.items()
             },
             "time_slots": {
-                f"{start},{end}": var.get()
+                f"{start.strftime('%H:%M')},{end.strftime('%H:%M')}": var.get()
                 for (start, end), var in self.time_slot_vars.items()
             },
         }
         with open(self.settings_file, "w") as f:
             json.dump(settings, f)
 
-    def load_settings(self):
+    def load_settings(self) -> None:
         if os.path.exists(self.settings_file):
             with open(self.settings_file, "r") as f:
                 settings = json.load(f)
-            # print("Loading settings:", settings)
 
             for day, value in settings.get("days", {}).items():
                 if day in self.day_vars:
                     self.day_vars[day].set(value)
-                    # print(f"Set day {day} to {value}")
 
             for room_key, value in settings.get("rooms", {}).items():
-                # print(f"Processing room key: {room_key}, value: {value}")
                 try:
                     building, room = map(int, room_key.split(","))
                     if (building, room) in self.room_vars:
                         self.room_vars[(building, room)].set(value)
-                        # print(f"Set room {building}-{room} to {value}")
                 except ValueError:
                     pass
-                    # print(f"Warning: Invalid room key format: {room_key}")
 
             for time_slot_key, value in settings.get("time_slots", {}).items():
                 try:
-                    start, end = time_slot_key.split(",")
+                    start_str, end_str = time_slot_key.split(",")
+                    start = datetime.strptime(start_str, "%H:%M").time()
+                    end = datetime.strptime(end_str, "%H:%M").time()
                     if (start, end) in self.time_slot_vars:
                         self.time_slot_vars[(start, end)].set(value)
                 except ValueError:
                     pass
 
-            # print(
-            #     "self.room_vars after loading:",
-            #     {k: v.get() for k, v in self.room_vars.items()},
-            # )
-
-    def display_results(self, unoccupied_slots):
+    def display_results(self, unoccupied_slots: Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]) -> None:
         # Create a new window to display results
         results_window = tk.Toplevel(self.master)
         results_window.title("Unoccupied Rooms")
@@ -166,5 +170,5 @@ class RoomSearchGUI:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    gui = RoomSearchGUI(root)
+    gui = RoomSearchGUI(root, {}, {}, [])
     root.mainloop()

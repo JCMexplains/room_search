@@ -1,7 +1,9 @@
 import pandas as pd
+from typing import Union
+import pandas as pd
 
 
-def process_room_number(room):
+def process_room_number(room: Union[str, float, int]) -> Union[int, pd.NAType]:
     if pd.isna(room):
         return pd.NA
     try:
