@@ -59,7 +59,7 @@ def parse_time(time_str):
         return None
 
 
-def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
+def find_unoccupied_rooms(selected_days=None, selected_rooms=None, selected_time_slots=None):
     # Define column types
     dtypes = {
         "building": int,
@@ -101,9 +101,15 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
     day_columns = df["days"].apply(expand_days)
     df = pd.concat([df.drop("days", axis=1), day_columns], axis=1)
 
+    # Determine the semester based on the data
+    terms = df['term'].unique()
+    is_summer_term = any(is_summer(term) for term in terms)
+    semester_blocks = summer_blocks if is_summer_term else fall_spring_blocks
+
     # Use selected options or default to all if not provided
     selected_days = selected_days or list("MTWRFS")
     selected_rooms = selected_rooms or MY_ROOMS
+    selected_time_slots = selected_time_slots or semester_blocks
 
     # Initialize occupancy dictionary
     occupancy = {
@@ -140,22 +146,22 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
     for (building, room), days in occupancy.items():
         unoccupied_slots[(building, room)] = {}
         for day, occupied_blocks in days.items():
-            unoccupied_slots[(building, room)][day] = set(blocks) - occupied_blocks
+            unoccupied_slots[(building, room)][day] = set(selected_time_slots) - occupied_blocks
 
     # print("Room capacities:", room_capacities)  # Debug print
 
-    return unoccupied_slots, room_capacities
+    return unoccupied_slots, room_capacities, semester_blocks
 
 
 def run_room_search():
-    unoccupied_slots, room_capacities = find_unoccupied_rooms()
+    unoccupied_slots, room_capacities, semester_blocks = find_unoccupied_rooms()
     
     # Import the GUI class here to avoid circular imports
     from rs_gui import RoomSearchGUI
     
     # Create and run the GUI
     root = tk.Tk()
-    gui = RoomSearchGUI(root, unoccupied_slots, room_capacities)
+    gui = RoomSearchGUI(root, unoccupied_slots, room_capacities, semester_blocks)
     root.mainloop()
 
 if __name__ == "__main__":

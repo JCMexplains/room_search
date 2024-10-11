@@ -4,16 +4,16 @@ import tkinter as tk
 from tkinter import ttk
 
 from constants.my_rooms import MY_ROOMS
+from constants.time_blocks import fall_spring_blocks, summer_blocks
 
 
 class RoomSearchGUI:
-    def __init__(self, master, unoccupied_slots, room_capacities):
+    def __init__(self, master, unoccupied_slots, room_capacities, semester_blocks):
         self.master = master
         self.unoccupied_slots = unoccupied_slots
         self.room_capacities = room_capacities
+        self.semester_blocks = semester_blocks
         master.title("Room Search")
-
-        # print("Room capacities in GUI:", self.room_capacities)  # Debug print
 
         self.settings_file = os.path.join("data", "gui_settings.txt")
 
@@ -35,13 +35,26 @@ class RoomSearchGUI:
             var = tk.BooleanVar(value=True)
             capacity = self.room_capacities.get((building, room), "N/A")
             room_text = f"{building}-{room} (Cap: {capacity})"
-            # print(f"Adding room: {room_text}")  # Debug print
             ttk.Checkbutton(
                 self.rooms_frame, 
                 text=room_text, 
                 variable=var
             ).pack(anchor="w")
             self.room_vars[(building, room)] = var
+
+        # Time Slots
+        self.time_slots_frame = ttk.LabelFrame(master, text="Time Slots")
+        self.time_slots_frame.pack(padx=10, pady=10, fill="x")
+        self.time_slot_vars = {}
+        for start, end in self.semester_blocks:
+            var = tk.BooleanVar(value=True)
+            time_slot_text = f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
+            ttk.Checkbutton(
+                self.time_slots_frame,
+                text=time_slot_text,
+                variable=var
+            ).pack(anchor="w")
+            self.time_slot_vars[(start, end)] = var
 
         self.load_settings()
 
@@ -54,22 +67,24 @@ class RoomSearchGUI:
     def submit(self):
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
         selected_rooms = [room for room, var in self.room_vars.items() if var.get()]
+        selected_time_slots = [slot for slot, var in self.time_slot_vars.items() if var.get()]
 
         self.save_settings()
 
         # Filter unoccupied_slots based on selections
-        filtered_slots = self.filter_unoccupied_slots(selected_days, selected_rooms)
+        filtered_slots = self.filter_unoccupied_slots(selected_days, selected_rooms, selected_time_slots)
 
         # Display results
         self.display_results(filtered_slots)
 
-    def filter_unoccupied_slots(self, selected_days, selected_rooms):
+    def filter_unoccupied_slots(self, selected_days, selected_rooms, selected_time_slots):
         filtered = {}
         for (building, room), days in self.unoccupied_slots.items():
             if (building, room) in selected_rooms:
-                filtered[(building, room)] = {
-                    day: slots for day, slots in days.items() if day in selected_days
-                }
+                filtered[(building, room)] = {}
+                for day, slots in days.items():
+                    if day in selected_days:
+                        filtered[(building, room)][day] = set(slot for slot in slots if slot in selected_time_slots)
         return filtered
 
     def save_settings(self):
@@ -78,6 +93,10 @@ class RoomSearchGUI:
             "rooms": {
                 f"{building},{room}": var.get()
                 for (building, room), var in self.room_vars.items()
+            },
+            "time_slots": {
+                f"{start},{end}": var.get()
+                for (start, end), var in self.time_slot_vars.items()
             },
         }
         with open(self.settings_file, "w") as f:
@@ -104,6 +123,14 @@ class RoomSearchGUI:
                 except ValueError:
                     pass
                     # print(f"Warning: Invalid room key format: {room_key}")
+
+            for time_slot_key, value in settings.get("time_slots", {}).items():
+                try:
+                    start, end = time_slot_key.split(",")
+                    if (start, end) in self.time_slot_vars:
+                        self.time_slot_vars[(start, end)].set(value)
+                except ValueError:
+                    pass
 
             # print(
             #     "self.room_vars after loading:",
