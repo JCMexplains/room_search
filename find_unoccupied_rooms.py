@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, time
 from typing import List, Tuple
+import tkinter as tk  # Add this import
 
 import pandas as pd
 
@@ -79,6 +80,9 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
         "term": int,
     }
 
+    # Add room_cap to the dtypes dictionary
+    dtypes["room_cap"] = int
+
     # Read CSV file
     df = pd.read_csv(
         os.path.join("data", "data.csv"),
@@ -107,11 +111,17 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
         for building, room in selected_rooms
     }
 
-    # Fill occupancy dictionary
+    # Create a dictionary to store room capacities
+    room_capacities = {}
+
+    # Fill occupancy dictionary and room capacities
     for _, row in df.iterrows():
         building = row["building"]
         room = row["room_number"] if pd.notna(row["room_number"]) else None
         if (building, room) in selected_rooms:
+            # Store room capacity
+            room_capacities[(building, room)] = row["room_cap"]
+
             blocks = summer_blocks if is_summer(row["term"]) else fall_spring_blocks
 
             if row["start_time"] is not None and row["end_time"] is not None:
@@ -132,27 +142,21 @@ def find_unoccupied_rooms(selected_days=None, selected_rooms=None):
         for day, occupied_blocks in days.items():
             unoccupied_slots[(building, room)][day] = set(blocks) - occupied_blocks
 
-    return unoccupied_slots
+    # print("Room capacities:", room_capacities)  # Debug print
+
+    return unoccupied_slots, room_capacities
 
 
-def main():
-    # Default to all options selected
-    all_days = list("MTWRFS")
-    all_rooms = MY_ROOMS
-
-    unoccupied_slots = find_unoccupied_rooms(all_days, all_rooms)
-
-    # Print results
-    for (building, room), days in unoccupied_slots.items():
-        print(f"\nBuilding {building}, Room {room}:")
-        for day, unoccupied_blocks in days.items():
-            print(f"  {day} unoccupied time blocks:")
-            if unoccupied_blocks:
-                for start, end in sorted(unoccupied_blocks):
-                    print(f"    {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
-            else:
-                print("    Fully occupied")
-
+def run_room_search():
+    unoccupied_slots, room_capacities = find_unoccupied_rooms()
+    
+    # Import the GUI class here to avoid circular imports
+    from rs_gui import RoomSearchGUI
+    
+    # Create and run the GUI
+    root = tk.Tk()
+    gui = RoomSearchGUI(root, unoccupied_slots, room_capacities)
+    root.mainloop()
 
 if __name__ == "__main__":
-    main()
+    run_room_search()

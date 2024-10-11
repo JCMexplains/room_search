@@ -3,14 +3,17 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-from find_unoccupied_rooms import find_unoccupied_rooms
 from constants.my_rooms import MY_ROOMS
 
 
 class RoomSearchGUI:
-    def __init__(self, master):
+    def __init__(self, master, unoccupied_slots, room_capacities):
         self.master = master
+        self.unoccupied_slots = unoccupied_slots
+        self.room_capacities = room_capacities
         master.title("Room Search")
+
+        # print("Room capacities in GUI:", self.room_capacities)  # Debug print
 
         self.settings_file = os.path.join("data", "gui_settings.txt")
 
@@ -30,8 +33,13 @@ class RoomSearchGUI:
         self.room_vars = {}
         for building, room in MY_ROOMS:
             var = tk.BooleanVar(value=True)
+            capacity = self.room_capacities.get((building, room), "N/A")
+            room_text = f"{building}-{room} (Cap: {capacity})"
+            # print(f"Adding room: {room_text}")  # Debug print
             ttk.Checkbutton(
-                self.rooms_frame, text=f"{building}-{room}", variable=var
+                self.rooms_frame, 
+                text=room_text, 
+                variable=var
             ).pack(anchor="w")
             self.room_vars[(building, room)] = var
 
@@ -49,11 +57,20 @@ class RoomSearchGUI:
 
         self.save_settings()
 
-        # Call find_unoccupied_rooms with these selections
-        unoccupied_slots = find_unoccupied_rooms(selected_days, selected_rooms)
+        # Filter unoccupied_slots based on selections
+        filtered_slots = self.filter_unoccupied_slots(selected_days, selected_rooms)
 
         # Display results
-        self.display_results(unoccupied_slots)
+        self.display_results(filtered_slots)
+
+    def filter_unoccupied_slots(self, selected_days, selected_rooms):
+        filtered = {}
+        for (building, room), days in self.unoccupied_slots.items():
+            if (building, room) in selected_rooms:
+                filtered[(building, room)] = {
+                    day: slots for day, slots in days.items() if day in selected_days
+                }
+        return filtered
 
     def save_settings(self):
         settings = {
@@ -70,32 +87,28 @@ class RoomSearchGUI:
         if os.path.exists(self.settings_file):
             with open(self.settings_file, "r") as f:
                 settings = json.load(f)
-
-            print("Loading settings:", settings)
+            # print("Loading settings:", settings)
 
             for day, value in settings.get("days", {}).items():
                 if day in self.day_vars:
                     self.day_vars[day].set(value)
-                    print(f"Set day {day} to {value}")
+                    # print(f"Set day {day} to {value}")
 
             for room_key, value in settings.get("rooms", {}).items():
-                print(f"Processing room key: {room_key}, value: {value}")
-                if "," in room_key:
-                    building, room = map(
-                        int, room_key.split(",")
-                    )  # Convert to integers
+                # print(f"Processing room key: {room_key}, value: {value}")
+                try:
+                    building, room = map(int, room_key.split(","))
                     if (building, room) in self.room_vars:
                         self.room_vars[(building, room)].set(value)
-                        print(f"Set room {building}-{room} to {value}")
-                    else:
-                        print(f"Room {building}-{room} not found in self.room_vars")
-                else:
-                    print(f"Warning: Invalid room key format: {room_key}")
+                        # print(f"Set room {building}-{room} to {value}")
+                except ValueError:
+                    pass
+                    # print(f"Warning: Invalid room key format: {room_key}")
 
-            print(
-                "self.room_vars after loading:",
-                {k: v.get() for k, v in self.room_vars.items()},
-            )
+            # print(
+            #     "self.room_vars after loading:",
+            #     {k: v.get() for k, v in self.room_vars.items()},
+            # )
 
     def display_results(self, unoccupied_slots):
         # Create a new window to display results

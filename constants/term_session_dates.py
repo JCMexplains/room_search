@@ -28,7 +28,7 @@ def get_dates(term, session):
         term = int(term)
         session = int(session)
     except ValueError:
-        print(f"Debug: Could not convert Term or Session to int")
+        # print(f"Debug: Could not convert Term or Session to int")
         return (None, None)
     result = TERM_SESSION_DATES.get((term, session), (None, None))
     return result
