@@ -4,4 +4,5 @@
 /*.xlsx
 /__pycache__
 /constants/__pycache__
-/data/
+/data/*.csv
+/data/*.xlsx    
