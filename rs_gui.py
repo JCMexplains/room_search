@@ -4,7 +4,6 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Tuple, Set, List
 from datetime import time, datetime
-from constants.my_rooms import MY_ROOMS
 
 
 
@@ -14,12 +13,14 @@ class RoomSearchGUI:
         master: tk.Tk,
         unoccupied_slots: Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]],
         room_capacities: Dict[Tuple[int, int], int],
-        semester_blocks: List[Tuple[time, time]]
+        semester_blocks: List[Tuple[time, time]],
+        my_rooms: List[Tuple[int, int]]
     ) -> None:
         self.master = master
         self.unoccupied_slots = unoccupied_slots
         self.room_capacities = room_capacities
         self.semester_blocks = semester_blocks
+        self.my_rooms = my_rooms
         master.title("Room Search")
 
         self.settings_file = os.path.join("data", "gui_settings.txt")
@@ -38,7 +39,7 @@ class RoomSearchGUI:
         self.rooms_frame = ttk.LabelFrame(master, text="Rooms")
         self.rooms_frame.pack(padx=10, pady=10, fill="x")
         self.room_vars = {}
-        for building, room in MY_ROOMS:
+        for building, room in self.my_rooms:
             var = tk.BooleanVar(value=True)
             capacity = self.room_capacities.get((building, room), "N/A")
             room_text = f"{building}-{room} (Cap: {capacity})"
@@ -170,5 +171,6 @@ class RoomSearchGUI:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    gui = RoomSearchGUI(root, {}, {}, [])
+    gui = RoomSearchGUI(root, {}, {}, [], [])
     root.mainloop()
+

@@ -162,7 +162,7 @@ def run_room_search() -> None:
     
     # Create and run the GUI
     root = tk.Tk()
-    gui = RoomSearchGUI(root, unoccupied_slots, room_capacities, semester_blocks)
+    gui = RoomSearchGUI(root, unoccupied_slots, room_capacities, semester_blocks, MY_ROOMS)
     root.mainloop()
 
 if __name__ == "__main__":

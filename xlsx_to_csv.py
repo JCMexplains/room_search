@@ -1,8 +1,8 @@
 import re
 import warnings
-
 import pandas as pd
 from openpyxl import styles
+from typing import Union
 
 from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 from drop_rows import drop_rows
@@ -18,6 +18,20 @@ def clean_dataframe(df):
         df[col] = df[col].str.strip()
 
     return df
+
+
+def process_room_number(room: Union[str, float, int]) -> Union[int, None]:
+    if pd.isna(room):
+        return None
+    try:
+        room_float = float(room)
+        room_int = int(room_float)
+        if room_int % 10 == 0 and room_int != 0:
+            return room_int // 10
+        else:
+            return room_int
+    except ValueError:
+        return None
 
 
 def transform_xlsx_to_csv(input_file, output_file):
@@ -47,8 +61,14 @@ def transform_xlsx_to_csv(input_file, output_file):
         else:
             print(f"Column '{col}' not found in the DataFrame")
 
+    # Process room_number
+    if "room_number" in df.columns:
+        df["room_number"] = df["room_number"].apply(process_room_number)
+        df["room_number"] = pd.to_numeric(df["room_number"], errors="coerce").astype("Int64")
+    else:
+        print("Warning: 'room_number' column not found in DataFrame")
+
     # Call drop_rows function from drop_rows.py
-    # also deletes trailing zeroes from room numbers
     df = drop_rows(df)
 
     # Convert 'start_time' and 'end_time' to time only (HH:MM format)

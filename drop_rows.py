@@ -1,20 +1,5 @@
 import pandas as pd
 from typing import Union
-import pandas as pd
-
-
-def process_room_number(room: Union[str, float, int]) -> Union[int, pd.NAType]:
-    if pd.isna(room):
-        return pd.NA
-    try:
-        room_float = float(room)
-        room_int = int(room_float)
-        if room_int % 10 == 0 and room_int != 0:
-            return room_int // 10
-        else:
-            return room_int
-    except ValueError:
-        return pd.NA
 
 
 def drop_rows(df: pd.DataFrame) -> pd.DataFrame:
@@ -50,9 +35,8 @@ def drop_rows(df: pd.DataFrame) -> pd.DataFrame:
 
     # Check if 'room_number' column exists
     if "room_number" in df.columns:
-        # Process room_number
-        df["room_number"] = df["room_number"].apply(process_room_number)
-        df["room_number"] = pd.to_numeric(df["room_number"], errors="coerce").astype("Int64")
+        # Convert room_number to numeric, coerce errors to NaN
+        df["room_number"] = pd.to_numeric(df["room_number"], errors="coerce")
         # Drop rows where 'room_number' is null after processing
         df = df.dropna(subset=["room_number"])
     else:
