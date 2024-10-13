@@ -1,6 +1,7 @@
 import re
 import warnings
 import pandas as pd
+from pathlib import Path
 
 
 from constants.term_session_dates import TERM_SESSION_DATES, get_dates
@@ -8,7 +9,7 @@ from drop_rows import drop_rows
 from rename_or_drop_columns import process_dataframe
 
 
-def clean_dataframe(df):
+def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
@@ -52,8 +53,8 @@ def process_room_number(room: str | float | int) -> int | None:
         return None
 
 
-def transform_xlsx_to_csv(input_file, output_file):
-    # Suppress the specific warning
+def transform_xlsx_to_csv(input_file: str | Path, output_file: str | Path) -> None:
+    # Suppress the warning that we don't have a default style sheet
     warnings.filterwarnings(
         "ignore", category=UserWarning, module="openpyxl.styles.stylesheet"
     )
@@ -124,10 +125,8 @@ def transform_xlsx_to_csv(input_file, output_file):
 
 
 if __name__ == "__main__":
-    import os
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(current_dir, "data")
-    input_xlsx = os.path.join(data_dir, "data.xlsx")
-    output_csv = os.path.join(data_dir, "data.csv")
+    current_dir = Path(__file__).parent
+    data_dir = current_dir / "data"
+    input_xlsx = data_dir / "data.xlsx"
+    output_csv = data_dir / "data.csv"
     transform_xlsx_to_csv(input_xlsx, output_csv)
