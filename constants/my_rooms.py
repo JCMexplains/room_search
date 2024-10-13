@@ -18,12 +18,21 @@ MY_ROOMS = [
 ]
 
 
-def is_valid_room(building, room):
+def is_valid_room(building: int, room: int) -> bool:
     """
     Check if a given building and room combination is in the MY_ROOMS list.
 
-    :param building: The building number (integer)
-    :param room: The room number (integer)
-    :return: True if the combination is in MY_ROOMS, False otherwise
+    Args:
+        building (int): The building number.
+        room (int): The room number.
+
+    Returns:
+        bool: True if the combination is in MY_ROOMS, False otherwise.
+
+    Example:
+        >>> is_valid_room(3, 113)
+        True
+        >>> is_valid_room(1, 101)
+        False
     """
     return (building, room) in MY_ROOMS

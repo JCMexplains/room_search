@@ -2,6 +2,24 @@ import pandas as pd
 
 
 def drop_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove rows from the DataFrame based on specific conditions.
+
+    This function filters out rows that don't meet certain criteria,
+    such as empty 'days' fields, non-Central campus, TBA buildings or start times,
+    and null room numbers.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to be filtered.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with rows removed based on the specified conditions.
+
+    Note:
+        This function modifies the following columns if they exist:
+        'days', 'campus', 'building', 'start_time', and 'room_number'.
+        It prints warnings if any of these columns are missing.
+    """
 
     # Check if 'days' column exists
     if "days" in df.columns:

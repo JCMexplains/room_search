@@ -61,6 +61,30 @@ def find_unoccupied_rooms(
     selected_rooms: Optional[List[Tuple[int, int]]] = None,
     selected_time_slots: Optional[List[Tuple[time, time]]] = None
 ) -> Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
+    """
+    Find unoccupied rooms based on selected criteria.
+
+    This function processes a CSV file containing room occupancy data and returns
+    information about unoccupied rooms, room capacities, and available time slots.
+
+    Args:
+        selected_days (Optional[List[str]]): List of days to consider (e.g., ["M", "W", "F"]).
+            If None, all days are considered.
+        selected_rooms (Optional[List[Tuple[int, int]]]): List of (building, room) tuples to consider.
+            If None, all rooms are considered.
+        selected_time_slots (Optional[List[Tuple[time, time]]]): List of time slots to consider.
+            If None, all time slots for the relevant semester are considered.
+
+    Returns:
+        Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
+            - A dictionary of unoccupied time slots for each room and day.
+            - A dictionary of room capacities.
+            - A list of all time slots considered for the relevant semester.
+
+    Note:
+        This function reads data from a CSV file named 'data.csv' in the 'data' directory.
+        It determines the semester (fall/spring or summer) based on the term data in the CSV.
+    """
     # Define column types
     dtypes = {
         "building": int,
