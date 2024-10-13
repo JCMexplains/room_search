@@ -26,10 +26,10 @@ def process_room_number(room: str | float | int) -> int | None:
     All the room numbers from CID are padded with a final 0, which we want to remove.
 
     Args:
-        room (Union[str, float, int]): The input room number, which can be a string, float, or integer.
+        room: str | float | int: The input room number, which can be a string, float, or integer.
 
     Returns:
-        Union[int, None]: The processed room number as an integer, or None if the input is invalid or cannot be processed.
+        int | None: The processed room number as an integer, or None if the input is invalid or cannot be processed.
 
     Examples:
         >>> process_room_number("103")
