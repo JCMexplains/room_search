@@ -1,5 +1,4 @@
 import pandas as pd
-from typing import Union
 
 
 def drop_rows(df: pd.DataFrame) -> pd.DataFrame:

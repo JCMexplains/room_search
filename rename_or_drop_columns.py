@@ -1,7 +1,6 @@
 import re
 
 import pandas as pd
-import pytest
 
 
 def camel_to_snake(name):

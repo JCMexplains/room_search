@@ -1,8 +1,7 @@
 import re
 import warnings
 import pandas as pd
-from openpyxl import styles
-from typing import Union
+
 
 from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 from drop_rows import drop_rows
