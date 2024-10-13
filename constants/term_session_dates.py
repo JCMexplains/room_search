@@ -14,7 +14,7 @@ TERM_SESSION_DATES = {
 }
 
 
-def get_dates(term, session):
+def get_dates(term, session) -> tuple[str | None, str | None]:
     """
     Look up the start and end dates for a given term and session.
 

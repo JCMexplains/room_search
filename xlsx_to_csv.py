@@ -20,7 +20,7 @@ def clean_dataframe(df):
     return df
 
 
-def process_room_number(room: Union[str, float, int]) -> Union[int, None]:
+def process_room_number(room: str | float | int) -> int | None:
     """
     This function does two things: it ensures that a string or float is converted to an integer, and it removes the final digit if it is 0.
 
