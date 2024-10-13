@@ -21,6 +21,25 @@ def clean_dataframe(df):
 
 
 def process_room_number(room: Union[str, float, int]) -> Union[int, None]:
+    """
+    This function does two things: it ensures that a string or float is converted to an integer, and it removes the final digit if it is 0.
+
+    All the room numbers from CID are padded with a final 0, which we want to remove.
+
+    Args:
+        room (Union[str, float, int]): The input room number, which can be a string, float, or integer.
+
+    Returns:
+        Union[int, None]: The processed room number as an integer, or None if the input is invalid or cannot be processed.
+
+    Examples:
+        >>> process_room_number("103")
+        103
+        >>> process_room_number(10.0)
+        1
+        >>> process_room_number("invalid")
+        None
+    """
     if pd.isna(room):
         return None
     try:
