@@ -5,6 +5,7 @@ import tkinter as tk
 
 import pandas as pd
 
+from constants.col_types import dtypes
 from constants.my_rooms import MY_ROOMS
 from constants.time_blocks import fall_spring_blocks as fall_spring_blocks_str
 from constants.time_blocks import summer_blocks as summer_blocks_str
@@ -85,28 +86,6 @@ def find_unoccupied_rooms(
         This function reads data from a CSV file named 'data.csv' in the 'data' directory.
         It determines the semester (fall/spring or summer) based on the term data in the CSV.
     """
-    # Define column types
-    dtypes = {
-        "building": int,
-        "campus": str,
-        "course_id": str,
-        "days": str,
-        "delivery_method": str,
-        "department": str,
-        "division": str,
-        "end_date": str,
-        "instructor_name": str,
-        "reference_number": int,
-        "room_number": int,
-        "session": int,
-        "start_date": str,
-        "start_time": str,
-        "end_time": str,
-        "term": int,
-    }
-
-    # Add room_cap to the dtypes dictionary
-    dtypes["room_cap"] = int
 
     # Read CSV file
     df = pd.read_csv(
