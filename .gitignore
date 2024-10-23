@@ -16,6 +16,9 @@ build/
 # Ignore all files in any directory named 'dist'
 dist/
 
+# Ignore all files in any directory named 'venv'
+venv/
+
 # Ignore node_modules directory
 node_modules/
 
