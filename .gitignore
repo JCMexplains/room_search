@@ -1,11 +1,19 @@
+# *.pyc        # Matches: file.pyc
+#              # Doesn't match: subfolder/file.pyc
+
+# */*.pyc      # Matches: subfolder/file.pyc
+#              # Doesn't match: deep/nested/file.pyc
+
+# **/*.pyc     # Matches ALL .pyc files anywhere in the project
+
 # Ignore all .log files
-*.log
+**/*.log
 
 # Ignore all .tmp files
-*.tmp
+**/*.tmp
 
 # Ignore all .cache files
-*.cache
+**/*.cache
 
 # Ignore all .DS_Store files (for Mac users)
 .DS_Store
@@ -23,25 +31,25 @@ dist/
 node_modules/
 
 # Ignore all .env files
-.env*
+**/.env*
 
 # Ignore all .pyc files
+# matches all
 **/*.pyc
 
 # Ignore all .class files
 **/*.class
 
 # Ignore all .swp files (Vim swap files)
-*.swp
+**/*.swp
 
 # Ignore all .vscode directories
 .vscode/
 
-# Ignore all .idea directories (for JetBrains IDEs)
-.idea//.pytest_cache
+**/*.csv
 
-*.csv
+**/*.xlsx 
 
-*.xlsx 
+**/*.pdf
 
-*.pdf
+**/*.txt
