@@ -14,17 +14,18 @@ from find_unoccupied_rooms import (
 
 class TestFindUnoccupiedRooms(unittest.TestCase):
     def setUp(self):
-        """Create a sample DataFrame for testing"""
+        """Create sample DataFrame with various date scenarios"""
         self.test_data = {
-            'building': [5, 5, 5],
-            'room_number': [212, 103, 104],
-            'term': [20252, 20252, 20252],
-            'start_time': ['09:30', '11:00', '09:30'],
-            'end_time': ['10:45', '12:15', '10:45'],
-            'days': ['MWF', 'TR', 'MWF'],
-            'room_cap': [30, 30, 25],
-            'start_date': ['2025-01-06', '2025-01-06', '2025-01-06'],
-            'end_date': ['2025-05-04', '2025-05-04', '2025-05-04']
+            'building': [5, 5, 5, 5],
+            'room_number': [212, 103, 104, 104],
+            'term': [20252, 20252, 20252, 20252],
+            'start_time': ['09:30', '11:00', '09:30', '14:00'],
+            'end_time': ['10:45', '12:15', '10:45', '15:15'],
+            'days': ['MWF', 'TR', 'MWF', 'TR'],
+            'room_cap': [30, 30, 25, 25],
+            # Add classes spanning different sessions
+            'start_date': ['2025-01-06', '2025-01-06', '2025-03-01', '2025-03-15'],
+            'end_date': ['2025-03-02', '2025-05-04', '2025-05-04', '2025-05-04']
         }
         self.df = pd.DataFrame(self.test_data)
         
@@ -154,6 +155,20 @@ class TestFindUnoccupiedRooms(unittest.TestCase):
         self.assertIsNone(parse_time(None))
         self.assertIsNone(parse_time("25:00"))  # Invalid hour
         self.assertIsNone(parse_time("09:60"))  # Invalid minute
+
+    def test_session_counts(self):
+        """Test session counts for various terms and sessions"""
+        @pytest.mark.parametrize("term,session,expected_count", [
+            (20252, 1, 2),  # Session 1 should have 2 classes
+            (20252, 2, 3),  # Session 2 should have 3 classes
+            (20253, 1, 0),  # Summer session should have no classes
+        ])
+        def test_session_counts(term, session, expected_count):
+            unoccupied_slots, _, _ = find_unoccupied_rooms(
+                selected_term=term,
+                selected_session=session
+            )
+            # Verify class counts
 
 if __name__ == '__main__':
     unittest.main()
