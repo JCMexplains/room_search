@@ -127,6 +127,28 @@ def transform_xlsx_to_csv(input_file: str | Path, output_file: str | Path) -> No
 if __name__ == "__main__":
     current_dir = Path(__file__).parent
     data_dir = current_dir / "data"
-    input_xlsx = data_dir / "data.xlsx"
+    
+    # Check if data directory exists, fail if it doesn't
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Data directory not found: {data_dir}")
+    
+    print(f"Looking for Excel files in: {data_dir}")
+    
+    # Find all xlsx files that start with "data"
+    xlsx_files = list(data_dir.glob("data*.xlsx"))
+    
+    if not xlsx_files:
+        print("No data*.xlsx files found!")
+        print("Please place your Excel file (named 'data.xlsx' or similar) in the following directory:")
+        print(f"  {data_dir}")
+        exit(1)
+    
+    # Take the first matching file
+    input_xlsx = xlsx_files[0]
     output_csv = data_dir / "data.csv"
+    
+    print(f"Found Excel file: {input_xlsx}")
+    print(f"Will save CSV to: {output_csv}")
+    
     transform_xlsx_to_csv(input_xlsx, output_csv)
+    print("Conversion completed successfully!")
