@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Tuple, Set, List
 from datetime import time, datetime
+import pandas as pd
 
 
 
@@ -25,8 +26,22 @@ class RoomSearchGUI:
 
         self.settings_file = os.path.join("data", "gui_settings.txt")
 
-        # Days
-        self.days_frame = ttk.LabelFrame(master, text="Days")
+        # Initialize frames in correct order
+        self.init_days_frame()
+        self.init_time_slots_frame()  # Create time_slots_frame before terms frame
+        self.init_terms_frame()       # This will update the time slots
+        self.init_rooms_frame()
+
+        self.load_settings()
+
+        # Submit Button
+        self.submit_button = ttk.Button(
+            master, text="Find Unoccupied Rooms", command=self.submit
+        )
+        self.submit_button.pack(pady=20)
+
+    def init_days_frame(self):
+        self.days_frame = ttk.LabelFrame(self.master, text="Days")
         self.days_frame.pack(padx=10, pady=10, fill="x")
         self.days = ["M", "T", "W", "R", "F", "S"]
         self.day_vars = {}
@@ -35,8 +50,8 @@ class RoomSearchGUI:
             ttk.Checkbutton(self.days_frame, text=day, variable=var).pack(side="left")
             self.day_vars[day] = var
 
-        # Rooms
-        self.rooms_frame = ttk.LabelFrame(master, text="Rooms")
+    def init_rooms_frame(self):
+        self.rooms_frame = ttk.LabelFrame(self.master, text="Rooms")
         self.rooms_frame.pack(padx=10, pady=10, fill="x")
         self.room_vars = {}
         for building, room in self.my_rooms:
@@ -50,11 +65,31 @@ class RoomSearchGUI:
             ).pack(anchor="w")
             self.room_vars[(building, room)] = var
 
-        # Time Slots
-        self.time_slots_frame = ttk.LabelFrame(master, text="Time Slots")
+    def init_time_slots_frame(self):
+        self.time_slots_frame = ttk.LabelFrame(self.master, text="Time Slots")
         self.time_slots_frame.pack(padx=10, pady=10, fill="x")
         self.time_slot_vars = {}
-        for start, end in self.semester_blocks:
+
+    def update_time_slots(self, *args):
+        # Clear existing time slots
+        for widget in self.time_slots_frame.winfo_children():
+            widget.destroy()
+        
+        # Determine if summer term
+        selected_term = int(self.selected_term.get())
+        is_summer_term = str(selected_term).endswith('3')
+        
+        # Get appropriate blocks
+        from constants.time_blocks import summer_blocks, fall_spring_blocks
+        blocks = summer_blocks if is_summer_term else fall_spring_blocks
+        
+        # Convert blocks to time objects
+        from find_unoccupied_rooms import convert_to_time_tuples
+        time_blocks = convert_to_time_tuples(blocks)
+        
+        # Create new checkboxes
+        self.time_slot_vars = {}
+        for start, end in time_blocks:
             var = tk.BooleanVar(value=True)
             time_slot_text = f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
             ttk.Checkbutton(
@@ -64,23 +99,44 @@ class RoomSearchGUI:
             ).pack(anchor="w")
             self.time_slot_vars[(start, end)] = var
 
-        self.load_settings()
-
-        # Submit Button
-        self.submit_button = ttk.Button(
-            master, text="Find Unoccupied Rooms", command=self.submit
+    def init_terms_frame(self):
+        self.terms_frame = ttk.LabelFrame(self.master, text="Term")
+        self.terms_frame.pack(padx=10, pady=10, fill="x")
+        
+        # Read terms from the CSV file
+        df = pd.read_csv(os.path.join("data", "data.csv"))
+        self.available_terms = sorted(df['term'].unique())
+        
+        # Create StringVar for the combobox
+        self.selected_term = tk.StringVar()
+        if self.available_terms:
+            self.selected_term.set(str(self.available_terms[0]))  # Set default value
+            self.update_time_slots()  # Initialize time slots based on default term
+        
+        # Create and pack the combobox
+        self.term_combo = ttk.Combobox(
+            self.terms_frame, 
+            textvariable=self.selected_term,
+            values=[str(term) for term in self.available_terms],
+            state="readonly"
         )
-        self.submit_button.pack(pady=20)
+        self.term_combo.pack(padx=5, pady=5)
 
     def submit(self) -> None:
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
         selected_rooms = [room for room, var in self.room_vars.items() if var.get()]
         selected_time_slots = [slot for slot, var in self.time_slot_vars.items() if var.get()]
+        selected_term = int(self.selected_term.get())
 
         self.save_settings()
 
         # Filter unoccupied_slots based on selections
-        filtered_slots = self.filter_unoccupied_slots(selected_days, selected_rooms, selected_time_slots)
+        filtered_slots = self.filter_unoccupied_slots(
+            selected_days, 
+            selected_rooms, 
+            selected_time_slots,
+            selected_term
+        )
 
         # Display results
         self.display_results(filtered_slots)
@@ -89,7 +145,8 @@ class RoomSearchGUI:
         self,
         selected_days: List[str],
         selected_rooms: List[Tuple[int, int]],
-        selected_time_slots: List[Tuple[time, time]]
+        selected_time_slots: List[Tuple[time, time]],
+        selected_term: int
     ) -> Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]:
         filtered = {}
         for (building, room), days in self.unoccupied_slots.items():
@@ -97,7 +154,10 @@ class RoomSearchGUI:
                 filtered[(building, room)] = {}
                 for day, slots in days.items():
                     if day in selected_days:
-                        filtered[(building, room)][day] = set(slot for slot in slots if slot in selected_time_slots)
+                        filtered[(building, room)][day] = set(
+                            slot for slot in slots 
+                            if slot in selected_time_slots
+                        )
         return filtered
 
     def save_settings(self) -> None:
@@ -111,6 +171,7 @@ class RoomSearchGUI:
                 f"{start.strftime('%H:%M')},{end.strftime('%H:%M')}": var.get()
                 for (start, end), var in self.time_slot_vars.items()
             },
+            "term": self.selected_term.get()
         }
         with open(self.settings_file, "w") as f:
             json.dump(settings, f)
@@ -141,6 +202,11 @@ class RoomSearchGUI:
                         self.time_slot_vars[(start, end)].set(value)
                 except ValueError:
                     pass
+
+            # Load term setting
+            saved_term = settings.get("term")
+            if saved_term and saved_term in [str(term) for term in self.available_terms]:
+                self.selected_term.set(saved_term)
 
     def display_results(self, unoccupied_slots: Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]) -> None:
         # Create a new window to display results

@@ -60,7 +60,8 @@ def parse_time(time_str: Optional[str]) -> Optional[time]:
 def find_unoccupied_rooms(
     selected_days: Optional[List[str]] = None,
     selected_rooms: Optional[List[Tuple[int, int]]] = None,
-    selected_time_slots: Optional[List[Tuple[time, time]]] = None
+    selected_time_slots: Optional[List[Tuple[time, time]]] = None,
+    selected_terms: Optional[List[int]] = None
 ) -> Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
     """
     Find unoccupied rooms based on selected criteria.
@@ -75,6 +76,8 @@ def find_unoccupied_rooms(
             If None, all rooms are considered.
         selected_time_slots (Optional[List[Tuple[time, time]]]): List of time slots to consider.
             If None, all time slots for the relevant semester are considered.
+        selected_terms (Optional[List[int]]): List of terms to consider.
+            If None, all terms are considered.
 
     Returns:
         Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
@@ -104,6 +107,10 @@ def find_unoccupied_rooms(
     # Expand the 'days' column
     day_columns = df["days"].apply(expand_days)
     df = pd.concat([df.drop("days", axis=1), day_columns], axis=1)
+
+    # Filter by selected terms if provided
+    if selected_terms:
+        df = df[df['term'].isin(selected_terms)]
 
     # Determine the semester based on the data
     terms = df['term'].unique()
