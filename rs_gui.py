@@ -4,7 +4,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Tuple, Set, List
 from datetime import time, datetime
+from constants.term_session_dates import TERM_SESSION_DATES
 import pandas as pd
+from find_unoccupied_rooms import find_unoccupied_rooms
 
 
 
@@ -100,8 +102,14 @@ class RoomSearchGUI:
             self.time_slot_vars[(start, end)] = var
 
     def init_terms_frame(self):
-        self.terms_frame = ttk.LabelFrame(self.master, text="Term")
+        self.terms_frame = ttk.LabelFrame(self.master, text="Term & Session")
         self.terms_frame.pack(padx=10, pady=10, fill="x")
+        
+        # Term selection
+        term_frame = ttk.Frame(self.terms_frame)
+        term_frame.pack(fill="x", padx=5, pady=2)
+        
+        ttk.Label(term_frame, text="Term:").pack(side="left")
         
         # Read terms from the CSV file
         df = pd.read_csv(os.path.join("data", "data.csv"))
@@ -109,36 +117,71 @@ class RoomSearchGUI:
         
         # Create StringVar for the combobox
         self.selected_term = tk.StringVar()
-        if self.available_terms:
-            self.selected_term.set(str(self.available_terms[0]))  # Set default value
-            self.update_time_slots()  # Initialize time slots based on default term
+        self.selected_session = tk.StringVar()
         
-        # Create and pack the combobox
+        if self.available_terms:
+            self.selected_term.set(str(self.available_terms[0]))
+        
+        # Create and pack the term combobox
         self.term_combo = ttk.Combobox(
-            self.terms_frame, 
+            term_frame, 
             textvariable=self.selected_term,
             values=[str(term) for term in self.available_terms],
-            state="readonly"
+            state="readonly",
+            width=10
         )
-        self.term_combo.pack(padx=5, pady=5)
+        self.term_combo.pack(side="left", padx=(5, 0))
+        
+        # Session selection
+        session_frame = ttk.Frame(self.terms_frame)
+        session_frame.pack(fill="x", padx=5, pady=2)
+        
+        ttk.Label(session_frame, text="Session:").pack(side="left")
+        
+        # Create and pack the session combobox
+        self.session_combo = ttk.Combobox(
+            session_frame,
+            textvariable=self.selected_session,
+            state="readonly",
+            width=10
+        )
+        self.session_combo.pack(side="left", padx=(5, 0))
+        
+        # Bind the update functions
+        self.term_combo.bind('<<ComboboxSelected>>', lambda e: (self.update_sessions(), self.update_time_slots()))
+        
+        # Initialize sessions and time slots
+        if self.available_terms:
+            self.update_sessions()
+            self.update_time_slots()
 
     def submit(self) -> None:
         selected_days = [day for day, var in self.day_vars.items() if var.get()]
         selected_rooms = [room for room, var in self.room_vars.items() if var.get()]
         selected_time_slots = [slot for slot, var in self.time_slot_vars.items() if var.get()]
         selected_term = int(self.selected_term.get())
+        selected_session = int(self.selected_session.get())
 
         self.save_settings()
+
+        # Get unoccupied slots with term and session filtering
+        unoccupied_slots, room_capacities, semester_blocks = find_unoccupied_rooms(
+            selected_days=selected_days,
+            selected_rooms=selected_rooms,
+            selected_time_slots=selected_time_slots,
+            selected_term=selected_term,
+            selected_session=selected_session
+        )
 
         # Filter unoccupied_slots based on selections
         filtered_slots = self.filter_unoccupied_slots(
             selected_days, 
             selected_rooms, 
             selected_time_slots,
-            selected_term
+            selected_term,
+            selected_session
         )
 
-        # Display results
         self.display_results(filtered_slots)
 
     def filter_unoccupied_slots(
@@ -146,8 +189,12 @@ class RoomSearchGUI:
         selected_days: List[str],
         selected_rooms: List[Tuple[int, int]],
         selected_time_slots: List[Tuple[time, time]],
-        selected_term: int
+        selected_term: int,
+        selected_session: int
     ) -> Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]:
+        # Get date range for term and session
+        start_date, end_date = TERM_SESSION_DATES.get((selected_term, selected_session), (None, None))
+        
         filtered = {}
         for (building, room), days in self.unoccupied_slots.items():
             if (building, room) in selected_rooms:
@@ -171,7 +218,8 @@ class RoomSearchGUI:
                 f"{start.strftime('%H:%M')},{end.strftime('%H:%M')}": var.get()
                 for (start, end), var in self.time_slot_vars.items()
             },
-            "term": self.selected_term.get()
+            "term": self.selected_term.get(),
+            "session": self.selected_session.get()
         }
         with open(self.settings_file, "w") as f:
             json.dump(settings, f)
@@ -208,6 +256,10 @@ class RoomSearchGUI:
             if saved_term and saved_term in [str(term) for term in self.available_terms]:
                 self.selected_term.set(saved_term)
 
+            saved_session = settings.get("session")
+            if saved_session:
+                self.selected_session.set(saved_session)
+
     def display_results(self, unoccupied_slots: Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]]) -> None:
         # Create a new window to display results
         results_window = tk.Toplevel(self.master)
@@ -233,6 +285,23 @@ class RoomSearchGUI:
 
         # Make the text widget read-only
         text_widget.config(state=tk.DISABLED)
+
+    def get_sessions_for_term(self, term: int) -> List[int]:
+        sessions = []
+        for (t, s) in TERM_SESSION_DATES.keys():
+            if t == term:
+                sessions.append(s)
+        return sorted(sessions)
+
+    def update_sessions(self, *args):
+        selected_term = int(self.selected_term.get())
+        available_sessions = self.get_sessions_for_term(selected_term)
+        
+        self.session_combo['values'] = [str(s) for s in available_sessions]
+        
+        # Set first session as default if available
+        if available_sessions:
+            self.selected_session.set(str(available_sessions[0]))
 
 
 if __name__ == "__main__":

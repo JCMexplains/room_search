@@ -9,6 +9,7 @@ from constants.col_types import dtypes
 from constants.my_rooms import MY_ROOMS
 from constants.time_blocks import fall_spring_blocks as fall_spring_blocks_str
 from constants.time_blocks import summer_blocks as summer_blocks_str
+from constants.term_session_dates import TERM_SESSION_DATES, get_dates
 
 
 def convert_to_time_tuples(blocks: List[Tuple[str, str]]) -> List[Tuple[time, time]]:
@@ -61,7 +62,8 @@ def find_unoccupied_rooms(
     selected_days: Optional[List[str]] = None,
     selected_rooms: Optional[List[Tuple[int, int]]] = None,
     selected_time_slots: Optional[List[Tuple[time, time]]] = None,
-    selected_terms: Optional[List[int]] = None
+    selected_term: Optional[int] = None,
+    selected_session: Optional[int] = None
 ) -> Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
     """
     Find unoccupied rooms based on selected criteria.
@@ -76,8 +78,10 @@ def find_unoccupied_rooms(
             If None, all rooms are considered.
         selected_time_slots (Optional[List[Tuple[time, time]]]): List of time slots to consider.
             If None, all time slots for the relevant semester are considered.
-        selected_terms (Optional[List[int]]): List of terms to consider.
+        selected_term (Optional[int]): List of terms to consider.
             If None, all terms are considered.
+        selected_session (Optional[int]): List of sessions to consider.
+            If None, all sessions are considered.
 
     Returns:
         Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
@@ -109,8 +113,8 @@ def find_unoccupied_rooms(
     df = pd.concat([df.drop("days", axis=1), day_columns], axis=1)
 
     # Filter by selected terms if provided
-    if selected_terms:
-        df = df[df['term'].isin(selected_terms)]
+    if selected_term:
+        df = df[df['term'] == selected_term]
 
     # Determine the semester based on the data
     terms = df['term'].unique()
@@ -157,14 +161,35 @@ def find_unoccupied_rooms(
     for (building, room), days in occupancy.items():
         unoccupied_slots[(building, room)] = {}
         for day, occupied_blocks in days.items():
-            unoccupied_slots[(building, room)][day] = set(selected_time_slots) - occupied_blocks
+            # Start with all selected time slots
+            available_slots = set(selected_time_slots)
+            # Remove occupied blocks
+            available_slots -= occupied_blocks
+            unoccupied_slots[(building, room)][day] = available_slots
 
     # print("Room capacities:", room_capacities)  # Debug print
+
+    # Get date range for term and session if both are provided
+    session_start = None
+    session_end = None
+    if selected_term and selected_session:
+        session_start, session_end = get_dates(selected_term, selected_session)
+        if session_start and session_end:
+            session_start = pd.to_datetime(session_start)
+            session_end = pd.to_datetime(session_end)
+            # Filter df to only include rows that overlap with the session dates
+            df['start_date'] = pd.to_datetime(df['start_date'])
+            df['end_date'] = pd.to_datetime(df['end_date'])
+            df = df[
+                (df['start_date'] <= session_end) & 
+                (df['end_date'] >= session_start)
+            ]
 
     return unoccupied_slots, room_capacities, semester_blocks
 
 
 def run_room_search() -> None:
+    # Initial call without term/session filtering
     unoccupied_slots, room_capacities, semester_blocks = find_unoccupied_rooms()
     
     # Import the GUI class here to avoid circular imports
