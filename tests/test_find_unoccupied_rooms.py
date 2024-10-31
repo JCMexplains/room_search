@@ -17,7 +17,7 @@ class TestFindUnoccupiedRooms(unittest.TestCase):
         """Create a sample DataFrame for testing"""
         self.test_data = {
             'building': [5, 5, 5],
-            'room_number': [103, 103, 104],
+            'room_number': [212, 103, 104],
             'term': [20252, 20252, 20252],
             'start_time': ['09:30', '11:00', '09:30'],
             'end_time': ['10:45', '12:15', '10:45'],
@@ -54,17 +54,18 @@ class TestFindUnoccupiedRooms(unittest.TestCase):
             selected_rooms=selected_rooms,
             selected_time_slots=selected_time_slots,
             selected_term=selected_term,
-            selected_session=selected_session
+            selected_session=selected_session,
+            data_file="test_data.csv"
         )
 
         # Test room capacities
         self.assertEqual(room_capacities[(5, 103)], 30)
         self.assertEqual(room_capacities[(5, 104)], 25)
 
-        # Test that room 103 is occupied MWF 9:30-10:45
+        # Test that room 104 is occupied MWF 9:30-10:45
         self.assertNotIn(
             (time(9, 30), time(10, 45)),
-            unoccupied_slots[(5, 103)]['M']
+            unoccupied_slots[(5, 104)]['M']
         )
 
         # Test that room 103 is available MWF 11:00-12:15

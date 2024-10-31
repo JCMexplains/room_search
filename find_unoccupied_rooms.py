@@ -63,7 +63,8 @@ def find_unoccupied_rooms(
     selected_rooms: Optional[List[Tuple[int, int]]] = None,
     selected_time_slots: Optional[List[Tuple[time, time]]] = None,
     selected_term: Optional[int] = None,
-    selected_session: Optional[int] = None
+    selected_session: Optional[int] = None,
+    data_file: str = "data.csv"
 ) -> Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
     """
     Find unoccupied rooms based on selected criteria.
@@ -82,6 +83,7 @@ def find_unoccupied_rooms(
             If None, all terms are considered.
         selected_session (Optional[int]): List of sessions to consider.
             If None, all sessions are considered.
+        data_file (str): Name of the CSV file to read data from.
 
     Returns:
         Tuple[Dict[Tuple[int, int], Dict[str, Set[Tuple[time, time]]]], Dict[Tuple[int, int], int], List[Tuple[time, time]]]:
@@ -96,7 +98,7 @@ def find_unoccupied_rooms(
 
     # Read CSV file
     df = pd.read_csv(
-        os.path.join("data", "data.csv"),
+        os.path.join("data", data_file),
         dtype=dtypes,
         skipinitialspace=True,
     )
