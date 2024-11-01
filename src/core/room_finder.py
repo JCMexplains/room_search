@@ -9,7 +9,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('room_finder.log'),
+        logging.FileHandler('logs/room_finder.log'),
         logging.StreamHandler()
     ]
 )
