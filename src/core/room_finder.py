@@ -141,14 +141,16 @@ def find_vacant_rooms(
         raise
 
 def get_formatted_blocks(blocks, all_blocks):
-    """Convert time blocks to formatted strings, with blanks for unavailable times"""
+    """Convert time blocks to formatted strings, with blanks for occupied times"""
     formatted = []
     blocks_set = set(blocks)  # Convert to set for O(1) lookup
     
     for block in all_blocks:
         if block in blocks_set:
+            # Room is vacant - show the time
             formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
         else:
+            # Room is occupied - show blank space
             formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
         formatted.append("   ")  # Add 3 spaces of padding between blocks
     

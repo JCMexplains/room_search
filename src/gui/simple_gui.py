@@ -85,21 +85,26 @@ class RoomFinderGUI:
         # Get all possible time blocks from constants
         all_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
         
-        # Display results
+        # Display results with explanation header
         self.results.delete(1.0, tk.END)
+        
+        # Add explanation header
+        self.results.insert(tk.END, "Room Availability Display:\n")
+        self.results.insert(tk.END, "- Times shown (e.g., '08:00-09:15') indicate the room is VACANT\n")
+        self.results.insert(tk.END, "- Blank spaces indicate the room is OCCUPIED\n\n")
         
         # Print header with time blocks
         header_times = [f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}   " 
                        for block in all_blocks]
         header_times[-1] = header_times[-1].rstrip()  # Remove padding from last block
-        self.results.insert(tk.END, "\nTime slots: " + "".join(header_times) + "\n")
+        self.results.insert(tk.END, "Times: " + "".join(header_times) + "\n")
         self.results.insert(tk.END, "-" * (len(header_times) * 14 + 20) + "\n")
         
         for room, days in vacancies.items():
             self.results.insert(tk.END, f"\nBuilding {room[0]}, Room {room[1]} (Cap: {days[list(days.keys())[0]][0]}):\n")
             for day, (cap, blocks) in days.items():
                 formatted_blocks = get_formatted_blocks(blocks, all_blocks)
-                self.results.insert(tk.END, f"{day:<3}: {''.join(formatted_blocks)}\n")
+                self.results.insert(tk.END, f"{day:<6}: {''.join(formatted_blocks)}\n")
 
 def main():
     root = tk.Tk()

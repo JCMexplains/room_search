@@ -3,9 +3,9 @@
     "session": "1",
     "days": {
         "M": true,
-        "T": false,
+        "T": true,
         "W": true,
-        "R": false,
+        "R": true,
         "F": false,
         "S": false
     }
