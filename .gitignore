@@ -54,3 +54,6 @@ node_modules/
 
 # Scratchpad for testing and development
 scratch.py 
+
+# Ignore src/gui/gui_settings.json
+src/gui/gui_settings.json

@@ -2,11 +2,11 @@
     "term": "20252",
     "session": "1",
     "days": {
-        "M": true,
-        "T": true,
-        "W": true,
-        "R": true,
-        "F": false,
+        "M": false,
+        "T": false,
+        "W": false,
+        "R": false,
+        "F": true,
         "S": false
     }
 }
