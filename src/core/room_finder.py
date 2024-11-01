@@ -107,11 +107,31 @@ def find_vacant_rooms(
         logging.error(f"An error occurred while searching for vacant rooms: {e}")
         raise
 
+def get_formatted_blocks(blocks, all_blocks):
+    """Convert time blocks to formatted strings, with blanks for unavailable times"""
+    formatted = []
+    blocks_set = set(blocks)  # Convert to set for O(1) lookup
+    
+    for block in all_blocks:
+        if block in blocks_set:
+            formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
+        else:
+            formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
+    
+    return formatted
+
 def print_vacancies(vacancies: Dict[Tuple[int, int], Dict[str, List[Tuple[time, time]]]]):
+    # Get all possible time blocks from constants
+    all_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
+    
+    # Print header with time blocks
+    header_times = [f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}" 
+                   for block in all_blocks]
+    print("\nTime slots:", "  ".join(header_times))
+    print("-" * (len(header_times) * 13 + 20))  # Separator line
+    
     for room, days in vacancies.items():
         print(f"\nBuilding {room[0]}, Room {room[1]}:")
         for day, blocks in days.items():
-            if blocks:  # Only show days with available slots
-                times = [f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}" 
-                        for block in blocks]
-                print(f"{day}: {', '.join(times)}") 
+            formatted_blocks = get_formatted_blocks(blocks, all_blocks)
+            print(f"{day:<3}: {' '.join(formatted_blocks)}")

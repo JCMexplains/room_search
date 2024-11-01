@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
-from src.core.room_finder import find_vacant_rooms
+from src.core.room_finder import find_vacant_rooms, get_formatted_blocks
+from src.core.constants.time_blocks import TIME_BLOCKS
+from src.core.utils import parse_time
 
 def get_valid_terms(data_file: str = "data.csv") -> list[int]:
     """Get list of valid terms from the CSV file"""
@@ -68,15 +70,23 @@ class RoomFinderGUI:
         
         vacancies = find_vacant_rooms(term, session, days)
         
+        # Get all possible time blocks from constants
+        all_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
+        
         # Display results
         self.results.delete(1.0, tk.END)
+        
+        # Print header with time blocks
+        header_times = [f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}" 
+                       for block in all_blocks]
+        self.results.insert(tk.END, "\nTime slots: " + "  ".join(header_times) + "\n")
+        self.results.insert(tk.END, "-" * (len(header_times) * 13 + 20) + "\n")
+        
         for room, days in vacancies.items():
             self.results.insert(tk.END, f"\nBuilding {room[0]}, Room {room[1]}:\n")
             for day, blocks in days.items():
-                if blocks:
-                    times = [f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}" 
-                            for block in blocks]
-                    self.results.insert(tk.END, f"{day}: {', '.join(times)}\n")
+                formatted_blocks = get_formatted_blocks(blocks, all_blocks)
+                self.results.insert(tk.END, f"{day:<3}: {' '.join(formatted_blocks)}\n")
 
 def main():
     root = tk.Tk()
