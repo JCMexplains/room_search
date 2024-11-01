@@ -16,6 +16,7 @@ logging.basicConfig(
 
 from src.core.constants.my_rooms import MY_ROOMS
 from src.core.constants.time_blocks import TIME_BLOCKS
+from src.core.constants.term_session_dates import get_dates
 
 def parse_time(time_str: str) -> Optional[time]:
     try:
@@ -61,18 +62,37 @@ def find_vacant_rooms(
     
     logging.info(f"Starting room search for term {term}, session {session}, days {days}")
     
-    # Validate input file
+    # Get dates for requested session
+    target_start, target_end = get_dates(term, session)
+    if not target_start or not target_end:
+        raise ValueError(f"Invalid term/session combination: {term}/{session}")
+    
+    target_start_date = parse_date(target_start)
+    target_end_date = parse_date(target_end)
+    
+    # Read data
     data_path = Path("data") / data_file
     if not data_path.exists():
         raise FileNotFoundError(f"Data file not found: {data_path}")
     
     try:
-        # Read and prepare data
+        # Read all data for the term
         df = pd.read_csv(f"data/{data_file}")
-        df = df[
-            (df['term'] == term) & 
-            (df['session'] == session)
-        ]
+        df = df[df['term'] == term]
+        
+        # Filter for overlapping sessions
+        overlapping_sessions = []
+        for sess in range(1, 5):  # Sessions 1-4
+            sess_start, sess_end = get_dates(term, sess)
+            if sess_start and sess_end:
+                sess_start_date = parse_date(sess_start)
+                sess_end_date = parse_date(sess_end)
+                if do_dates_overlap(target_start_date, target_end_date, 
+                                  sess_start_date, sess_end_date):
+                    overlapping_sessions.append(sess)
+        
+        # Filter for classes in any overlapping session
+        df = df[df['session'].isin(overlapping_sessions)]
 
         # Convert time blocks to time objects
         time_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
