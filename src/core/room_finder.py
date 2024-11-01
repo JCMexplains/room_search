@@ -58,7 +58,7 @@ def find_vacant_rooms(
     session: int,
     days: List[str],
     data_file: str = "data.csv"
-) -> Dict[Tuple[int, int], Dict[str, List[Tuple[time, time]]]]:
+) -> Dict[Tuple[int, int], Dict[str, Tuple[int, List[Tuple[time, time]]]]]:
     
     logging.info(f"Starting room search for term {term}, session {session}, days {days}")
     
@@ -97,13 +97,25 @@ def find_vacant_rooms(
         # Convert time blocks to time objects
         time_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
         
-        # Initialize results
+        # Initialize results with room capacities
+        room_caps = {}  # Dictionary to store room capacities
         vacancies = {
-            room: {day: time_blocks.copy() for day in days}
+            room: {day: (0, time_blocks.copy()) for day in days}  # (capacity, time_blocks)
             for room in MY_ROOMS
         }
-
-        # Process each class
+        
+        # First pass: get room capacities
+        for _, row in df.iterrows():
+            room = (row['building'], row['room_number'])
+            if room in MY_ROOMS:
+                # Update capacity if it's larger than what we've seen before
+                current_cap = vacancies[room][list(vacancies[room].keys())[0]][0]
+                new_cap = int(row['room_cap']) if pd.notna(row['room_cap']) else 0
+                if new_cap > current_cap:
+                    for day in days:
+                        vacancies[room][day] = (new_cap, vacancies[room][day][1])
+        
+        # Second pass: process time blocks
         for _, row in df.iterrows():
             if pd.isna(row['start_time']) or pd.isna(row['end_time']):
                 continue
@@ -117,11 +129,12 @@ def find_vacant_rooms(
             
             for day in days:
                 if day in class_days:
-                    vacancies[room][day] = [
-                        block for block in vacancies[room][day]
+                    cap, blocks = vacancies[room][day]
+                    vacancies[room][day] = (cap, [
+                        block for block in blocks
                         if not is_conflict(class_time, block)
-                    ]
-
+                    ])
+        
         return vacancies
     except Exception as e:
         logging.error(f"An error occurred while searching for vacant rooms: {e}")
@@ -137,6 +150,11 @@ def get_formatted_blocks(blocks, all_blocks):
             formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
         else:
             formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
+        formatted.append("   ")  # Add 3 spaces of padding between blocks
+    
+    # Remove the trailing padding from the last block
+    if formatted:
+        formatted.pop()
     
     return formatted
 
