@@ -52,4 +52,5 @@ node_modules/
 
 **/*.pdf
 
-scratch.py # Scratchpad for testing and development
+# Scratchpad for testing and development
+scratch.py 
