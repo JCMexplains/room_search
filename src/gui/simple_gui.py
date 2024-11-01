@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
-from room_finder import find_vacant_rooms
+from src.core.room_finder import find_vacant_rooms
 
 def get_valid_terms(data_file: str = "data.csv") -> list[int]:
     """Get list of valid terms from the CSV file"""
