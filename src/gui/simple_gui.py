@@ -3,7 +3,7 @@ from tkinter import ttk
 import pandas as pd
 from src.core.room_finder import find_vacant_rooms, get_formatted_blocks
 from src.core.constants.time_blocks import TIME_BLOCKS
-from src.core.utils import parse_time
+from src.utils.date_utils import parse_time
 
 def get_valid_terms(data_file: str = "data.csv") -> list[int]:
     """Get list of valid terms from the CSV file"""
