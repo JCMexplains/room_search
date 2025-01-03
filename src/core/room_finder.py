@@ -60,25 +60,51 @@ def find_vacant_rooms(
     data_file: str = "data.csv"
 ) -> Dict[Tuple[int, int], Dict[str, Tuple[int, List[Tuple[time, time]]]]]:
     
-    logging.info(f"Starting room search for term {term}, session {session}, days {days}")
-    
-    # Get dates for requested session
-    target_start, target_end = get_dates(term, session)
-    if not target_start or not target_end:
-        raise ValueError(f"Invalid term/session combination: {term}/{session}")
-    
-    target_start_date = parse_date(target_start)
-    target_end_date = parse_date(target_end)
-    
-    # Read data
-    data_path = Path("data") / data_file
-    if not data_path.exists():
-        raise FileNotFoundError(f"Data file not found: {data_path}")
+    # Define column name mappings (original -> standardized)
+    COLUMN_MAPPING = {
+        'Term': 'term',
+        'Sess': 'sess',
+        'Bldg': 'building',
+        'Rm #': 'room_number',
+        'Rm Cap': 'room_cap',
+        'Start': 'start_time',
+        'End': 'end_time',
+        'Days': 'days'
+    }
     
     try:
-        # Read all data for the term
+        # Read data and standardize column names
         df = pd.read_csv(f"data/{data_file}")
-        df = df[df['term'] == term]
+        
+        # Print original columns for debugging
+        print("Original columns:", df.columns.tolist())
+        
+        # Rename columns using the mapping
+        df = df.rename(columns=lambda x: COLUMN_MAPPING.get(x, x.lower()))
+        
+        # Print renamed columns for debugging
+        print("Standardized columns:", df.columns.tolist())
+        
+        print("Available columns:", df.columns.tolist())  # Debug
+        print("Term values:", df['term'].unique())  # Debug
+        print("Session values:", df['sess'].unique())  # Debug
+        print("Filtering for term:", term, "session:", session)  # Debug
+        
+        # Filter by term and session
+        df = df[
+            (df['term'] == int(term)) & 
+            (df['sess'] == str(session))  # Using 'sess' consistently
+        ]
+        
+        print("Filtered DataFrame shape:", df.shape)  # Debug
+        
+        # Get dates for requested session
+        target_start, target_end = get_dates(term, session)
+        if not target_start or not target_end:
+            raise ValueError(f"Invalid term/session combination: {term}/{session}")
+        
+        target_start_date = parse_date(target_start)
+        target_end_date = parse_date(target_end)
         
         # Filter for overlapping sessions
         overlapping_sessions = []
@@ -89,10 +115,10 @@ def find_vacant_rooms(
                 sess_end_date = parse_date(sess_end)
                 if do_dates_overlap(target_start_date, target_end_date, 
                                   sess_start_date, sess_end_date):
-                    overlapping_sessions.append(sess)
+                    overlapping_sessions.append(str(sess))  # Convert to string to match data
         
-        # Filter for classes in any overlapping session
-        df = df[df['session'].isin(overlapping_sessions)]
+        # Filter for classes in any overlapping session - using 'sess' instead of 'session'
+        df = df[df['sess'].isin(overlapping_sessions)]
 
         # Convert time blocks to time objects
         time_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
@@ -137,7 +163,8 @@ def find_vacant_rooms(
         
         return vacancies
     except Exception as e:
-        logging.error(f"An error occurred while searching for vacant rooms: {e}")
+        print(f"Error in find_vacant_rooms: {e}")
+        print(f"Term value being searched for: {term}")  # Debug: see what we're searching for
         raise
 
 def get_formatted_blocks(blocks, all_blocks):
