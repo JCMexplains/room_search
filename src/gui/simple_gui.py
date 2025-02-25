@@ -156,6 +156,8 @@ class RoomFinderGUI:
                 )
                 for day, times in room_data['vacant_times'].items():
                     formatted_blocks = get_formatted_blocks(times, all_blocks)
+                    print("Blocks Set:", {block for block in all_blocks if block in times})
+                    print("All Blocks:", all_blocks)
                     self.results.insert(
                         tk.END, f"{day:<6}: {''.join(formatted_blocks)}\n"
                     )

@@ -34,9 +34,9 @@ from src.core.constants.room_caps import get_room_cap
 def parse_time(time_str: str) -> datetime:
     """Convert time string to datetime object"""
     try:
-        return datetime.strptime(str(time_str).strip(), "%H:%M")
+        return datetime.strptime(time_str.strip(), "%H:%M")
     except ValueError as e:
-        print(f"Error parsing time {time_str}: {e}")
+        logging.error(f"Failed to parse time '{time_str}': {e}")
         return None
 
 
@@ -312,9 +312,10 @@ def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
         e2 = parse_time(end2)
         
         if None in (s1, e1, s2, e2):
+            print(f"Warning: Could not parse times: {start1}-{end1} vs {start2}-{end2}")
             return True  # Assume overlap if we can't parse times
             
-        return max(s1, s2) < min(e1, e2)
+        return (s1 <= e2) and (e1 >= s2)
     except Exception as e:
         print(f"Error comparing times: {start1}-{end1} with {start2}-{end2}: {e}")
         return True  # Assume overlap on error
@@ -323,23 +324,28 @@ def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
 def get_formatted_blocks(blocks, all_blocks):
     """Convert time blocks to formatted strings, with blanks for occupied times"""
     formatted = []
-    blocks_set = set(blocks)  # Convert to set for O(1) lookup
-
+    
+    print("Blocks:", blocks)
+    
+    # Convert blocks to comparable format
+    blocks_set = {
+        (parse_time(start).time(), parse_time(end).time())
+        for start, end in blocks
+    }
+    
     for block in all_blocks:
         if block in blocks_set:
             # Room is vacant - show the time
-            formatted.append(
-                f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}"
-            )
+            formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
         else:
             # Room is occupied - show blank space
             formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
         formatted.append("   ")  # Add 3 spaces of padding between blocks
-
+    
     # Remove the trailing padding from the last block
     if formatted:
         formatted.pop()
-
+    
     return formatted
 
 
@@ -347,7 +353,9 @@ def print_vacancies(
     vacancies: Dict[Tuple[int, int], Dict[str, List[Tuple[time, time]]]]
 ):
     # Get all possible time blocks from constants
-    all_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
+    all_blocks = [
+        (parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS
+    ]
 
     # Print header with time blocks
     header_times = [
