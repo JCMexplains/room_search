@@ -6,14 +6,20 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 
-# Create logs directory if it doesn't exist
-os.makedirs("logs", exist_ok=True)
+# Get project root directory (assuming src is a subdirectory of the project root)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
-# Set up logging
+# Create logs directory if it doesn't exist
+os.makedirs(PROJECT_ROOT / "logs", exist_ok=True)
+
+# Set up logging with absolute path
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("logs/room_finder.log"), logging.StreamHandler()],
+    handlers=[
+        logging.FileHandler(str(PROJECT_ROOT / "logs/room_finder.log")),
+        logging.StreamHandler(),
+    ],
 )
 
 from src.core.constants.my_rooms import MY_ROOMS
@@ -64,27 +70,30 @@ def is_conflict(class_time: Tuple[time, time], block_time: Tuple[time, time]) ->
 
 def find_vacant_rooms(
     term: int, session: int, days: List[str], data_file: str = "*data*.csv"
-) -> Dict[Tuple[int, int], Dict[str, Tuple[int, List[Tuple[time, time]]]]]]:
+) -> Dict[Tuple[str, str], Dict[str, Tuple[int, List[Tuple[time, time]]]]]:
 
     # Define column name mappings (original -> standardized)
     COLUMN_MAPPING = {
         "Term": "term",
-        "Sess": "sess",
-        "Bldg": "building",
-        "Rm #": "room_number",
-        "Rm Cap": "room_cap",
-        "Start": "start_time",
-        "End": "end_time",
-        "Days": "days",
+        "session": "sess",  # Changed from "Sess" to "session"
+        "building": "building",
+        "room_number": "room_number",
+        "room_cap": "room_cap",
+        "start_time": "start_time",
+        "end_time": "end_time",
+        "days": "days",
     }
 
     try:
-        # Find the first matching data file
-        data_files = list(Path("data").glob(data_file))
+        # Use relative glob pattern from the data directory
+        data_dir = PROJECT_ROOT / "data"
+        data_files = list(data_dir.glob("*data*.csv"))
         if not data_files:
-            raise FileNotFoundError(f"No files matching '{data_file}' found in data directory")
-        
-        # Read data and standardize column names
+            raise FileNotFoundError(
+                f"No files matching '*data*.csv' found in {data_dir}"
+            )
+
+        logging.info(f"Loading data from: {data_files[0]}")
         df = pd.read_csv(data_files[0])
 
         # Print original columns for debugging
