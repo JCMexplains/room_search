@@ -24,8 +24,9 @@ build/
 # Ignore all files in any directory named 'dist'
 dist/
 
-# Ignore all files in any directory named '.venv'
+# Ignore all files in any directory named '.venv' or 'venv'
 .venv/
+venv/
 
 # Ignore node_modules directory
 node_modules/
