@@ -2,7 +2,9 @@ import logging
 import os
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
+import glob
+from copy import deepcopy
 
 import pandas as pd
 
@@ -25,13 +27,16 @@ logging.basicConfig(
 from src.core.constants.my_rooms import MY_ROOMS
 from src.core.constants.term_session_dates import get_dates
 from src.core.constants.time_blocks import TIME_BLOCKS
+from src.core.constants.col_types import VALID_SESSIONS
+from src.core.constants.room_caps import get_room_cap
 
 
-def parse_time(time_str: str) -> Optional[time]:
+def parse_time(time_str: str) -> datetime:
+    """Convert time string to datetime object"""
     try:
-        return datetime.strptime(time_str, "%H:%M").time()
+        return datetime.strptime(str(time_str).strip(), "%H:%M")
     except ValueError as e:
-        logging.error(f"Failed to parse time '{time_str}': {e}")
+        print(f"Error parsing time {time_str}: {e}")
         return None
 
 
@@ -70,135 +75,249 @@ def is_conflict(class_time: Tuple[time, time], block_time: Tuple[time, time]) ->
 
 def find_vacant_rooms(
     term: int, session: int, days: List[str], data_file: str = "*data*.csv"
-) -> Dict[Tuple[str, str], Dict[str, Tuple[int, List[Tuple[time, time]]]]]:
-
-    # Define column name mappings (original -> standardized)
-    COLUMN_MAPPING = {
-        "Term": "term",
-        "session": "sess",  # Changed from "Sess" to "session"
-        "building": "building",
-        "room_number": "room_number",
-        "room_cap": "room_cap",
-        "start_time": "start_time",
-        "end_time": "end_time",
-        "days": "days",
-    }
+) -> Dict[str, Dict]:
 
     try:
-        # Use relative glob pattern from the data directory
-        data_dir = PROJECT_ROOT / "data"
-        data_files = list(data_dir.glob("*data*.csv"))
-        if not data_files:
-            raise FileNotFoundError(
-                f"No files matching '*data*.csv' found in {data_dir}"
-            )
-
-        logging.info(f"Loading data from: {data_files[0]}")
-        df = pd.read_csv(data_files[0])
-
-        # Print original columns for debugging
-        print("Original columns:", df.columns.tolist())
-
-        # Rename columns using the mapping
-        df = df.rename(columns=lambda x: COLUMN_MAPPING.get(x, x.lower()))
-
-        # Print renamed columns for debugging
-        print("Standardized columns:", df.columns.tolist())
-
-        print("Available columns:", df.columns.tolist())  # Debug
-        print("Term values:", df["term"].unique())  # Debug
-        print("Session values:", df["sess"].unique())  # Debug
-        print("Filtering for term:", term, "session:", session)  # Debug
-
-        # Filter by term and session
-        df = df[
-            (df["term"] == int(term))
-            & (df["sess"] == str(session))  # Using 'sess' consistently
-        ]
-
-        print("Filtered DataFrame shape:", df.shape)  # Debug
-
-        # Get dates for requested session
-        target_start, target_end = get_dates(term, session)
-        if not target_start or not target_end:
-            raise ValueError(f"Invalid term/session combination: {term}/{session}")
-
-        target_start_date = parse_date(target_start)
-        target_end_date = parse_date(target_end)
-
-        # Filter for overlapping sessions
-        overlapping_sessions = []
-        for sess in range(1, 5):  # Sessions 1-4
-            sess_start, sess_end = get_dates(term, sess)
-            if sess_start and sess_end:
-                sess_start_date = parse_date(sess_start)
-                sess_end_date = parse_date(sess_end)
-                if do_dates_overlap(
-                    target_start_date, target_end_date, sess_start_date, sess_end_date
-                ):
-                    overlapping_sessions.append(
-                        str(sess)
-                    )  # Convert to string to match data
-
-        # Filter for classes in any overlapping session - using 'sess' instead of 'session'
-        df = df[df["sess"].isin(overlapping_sessions)]
-
-        # Convert time blocks to time objects
-        time_blocks = [
-            (parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS
-        ]
-
-        # Initialize results with room capacities
-        room_caps = {}  # Dictionary to store room capacities
-        vacancies = {
-            room: {
-                day: (0, time_blocks.copy()) for day in days
-            }  # (capacity, time_blocks)
-            for room in MY_ROOMS
+        # At the very start, verify TIME_BLOCKS
+        print("TIME_BLOCKS type:", type(TIME_BLOCKS))
+        print("TIME_BLOCKS sample:", list(TIME_BLOCKS)[:2])
+        
+        # Define column name mappings (original -> standardized)
+        COLUMN_MAPPING = {
+            "Term": "term",
+            "Session": "session",  # Make sure this matches your CSV header exactly
+            "Building": "building",
+            "Room Number": "room_number",  # Adjust if different in your CSV
+            "Room Cap": "room_cap",  # Adjust if different in your CSV
+            "Start Time": "start_time",  # Adjust if different in your CSV
+            "End Time": "end_time",  # Adjust if different in your CSV
+            "Days": "days",
         }
 
-        # First pass: get room capacities
-        for _, row in df.iterrows():
-            room = (row["building"], row["room_number"])
-            if room in MY_ROOMS:
-                # Update capacity if it's larger than what we've seen before
-                current_cap = vacancies[room][list(vacancies[room].keys())[0]][0]
-                new_cap = int(row["room_cap"]) if pd.notna(row["room_cap"]) else 0
-                if new_cap > current_cap:
-                    for day in days:
-                        vacancies[room][day] = (new_cap, vacancies[room][day][1])
+        print(f"Received days parameter: {days} (type: {type(days)})")
+        
+        # Find the most recent data file
+        data_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "*data*.csv")
+        data_files = glob.glob(data_path)
+        if not data_files:
+            print(f"Searching for data files in: {data_path}")
+            raise FileNotFoundError(f"No data files found matching {data_path}")
+        latest_file = max(data_files, key=os.path.getctime)
+        logging.info(f"Loading data from: {latest_file}")
 
-        # Second pass: process time blocks
+        # Read CSV with explicit dtypes, but read building as string first
+        df = pd.read_csv(
+            latest_file,
+            dtype={
+                'building': str,  # Read as string first to handle 'TBA'
+                'room_number': float,
+                'room_cap': 'Int64',  # Use nullable integer type
+                'days': str,
+                'session': 'Int64',
+                'term': 'Int64'
+            }
+        )
+
+        # Filter out rows where building is 'TBA' or non-numeric
+        df = df[df['building'].str.isnumeric().fillna(False)]
+        # Now convert building to int
+        df['building'] = df['building'].astype(int)
+
+        # Check for invalid sessions but don't raise error
+        invalid_sessions = [s for s in df["session"].unique() if s not in VALID_SESSIONS]
+        if invalid_sessions:
+            logging.warning(f"Skipping rows with invalid session numbers: {invalid_sessions}")
+            # Filter out invalid sessions
+            df = df[df["session"].isin(VALID_SESSIONS)]
+
+        # Filter for term and session FIRST
+        print(f"Filtering for term {term} and session {session}")
+        df = df[
+            (df["term"] == int(term)) & 
+            (df["session"] == int(session))
+        ]
+        print(f"Found {len(df)} rows after filtering")
+
+        # Print sample of filtered data
+        print("\nSample of filtered data:")
+        print(df[['building', 'room_number', 'room_cap', 'start_time', 'end_time', 'days']].head())
+        print("\nSample of days column after filtering:")
+        print(df['days'].head())
+        print("Days column type:", df['days'].dtype)
+
+        # Create a set of occupied time slots for each room
+        occupied_slots = {}
         for _, row in df.iterrows():
-            if pd.isna(row["start_time"]) or pd.isna(row["end_time"]):
+            try:
+                building = int(row['building'])
+                room = int(float(row['room_number'])) if pd.notna(row['room_number']) else None
+                start = str(row['start_time'])
+                end = str(row['end_time'])
+                days_raw = row['days']
+                
+                # Skip if we don't have valid building and room
+                if room is None or pd.isna(building):
+                    continue
+                    
+                room_key = f"{building}-{room}"
+                
+                # Skip invalid time entries
+                if pd.isna(start) or pd.isna(end):
+                    continue
+                    
+                if room_key not in occupied_slots:
+                    occupied_slots[room_key] = {d: [] for d in 'MTWRFS'}
+                
+                # Handle combined day codes (e.g., 'TR' -> ['T', 'R'])
+                if pd.notna(days_raw):
+                    # Convert to string and handle any numeric values
+                    days_str = str(days_raw)
+                    if days_str.isdigit():
+                        print(f"Warning: Numeric day value found: {days_str}")
+                        continue
+                        
+                    # Convert day codes like 'TR' into individual days
+                    day_chars = [c for c in days_str if c in 'MTWRFS']
+                    for day in day_chars:
+                        if (start, end) not in occupied_slots[room_key][day]:
+                            occupied_slots[room_key][day].append((start, end))
+
+            except Exception as e:
+                print(f"Error processing row: {e}")
+                print(f"Row data: days={days_raw}, building={building}, room={room}")
                 continue
 
-            room = (row["building"], row["room_number"])
-            if room not in MY_ROOMS:
+        print("\nOccupied slots sample:")
+        # Print first few entries of occupied_slots
+        for key in list(occupied_slots.keys())[:3]:
+            print(f"{key}: {occupied_slots[key]}")
+
+        # Now create the vacant rooms dictionary
+        vacant_rooms = {}
+        print("\nProcessing MY_ROOMS:", MY_ROOMS)  # Debug print
+        
+        for building, room in MY_ROOMS:
+            try:
+                room_key = f"{building}-{room}"
+                print(f"\nProcessing room {room_key}")  # Debug print
+                
+                # Get room capacity from constants
+                room_cap = get_room_cap(building, room)
+                
+                vacant_times = {}
+                # Process each requested day
+                for day in days:
+                    print(f"  Checking day {day}")  # Debug print
+                    vacant_times[day] = []  # Initialize empty list for this day
+                    
+                    if room_key not in occupied_slots:
+                        # Room has no occupancy data, all times are vacant
+                        print(f"    No occupancy data for {room_key} - marking all times vacant")
+                        vacant_times[day] = list(TIME_BLOCKS)
+                    else:
+                        # Get occupied times for this day
+                        occupied = occupied_slots[room_key].get(day, [])
+                        print(f"    Found {len(occupied)} occupied times")
+                        
+                        # Check each time block
+                        for time_block in TIME_BLOCKS:
+                            is_vacant = True
+                            for occ_start, occ_end in occupied:
+                                if overlaps(time_block[0], time_block[1], occ_start, occ_end):
+                                    is_vacant = False
+                                    break
+                            if is_vacant:
+                                vacant_times[day].append(time_block)
+                
+                # Always include the room, even if it has no vacant times
+                vacant_rooms[room_key] = {
+                    'capacity': room_cap,
+                    'vacant_times': vacant_times
+                }
+
+            except Exception as e:
+                print(f"Error processing room {building}-{room}: {e}")
                 continue
 
-            class_time = (parse_time(row["start_time"]), parse_time(row["end_time"]))
-            class_days = row["days"]
-
+        print(f"\nFound {len(vacant_rooms)} rooms with vacant times")
+        # Debug print a sample of the vacant_rooms structure
+        if vacant_rooms:
+            sample_key = next(iter(vacant_rooms))
+            print(f"Sample vacant room data structure:")
+            print(f"Key: {sample_key}")
+            print(f"Value: {vacant_rooms[sample_key]}")
+        
+        # Ensure consistent data structure for all rooms
+        final_rooms = {}
+        for room_key, room_data in vacant_rooms.items():
+            # Ensure each room has both capacity and vacant_times
+            final_room = {
+                'capacity': int(room_data.get('capacity', 0)),
+                'vacant_times': {}
+            }
+            
+            # Ensure each day has a list of time tuples
             for day in days:
-                if day in class_days:
-                    cap, blocks = vacancies[room][day]
-                    vacancies[room][day] = (
-                        cap,
-                        [
-                            block
-                            for block in blocks
-                            if not is_conflict(class_time, block)
-                        ],
-                    )
+                final_room['vacant_times'][day] = [
+                    (str(start), str(end)) 
+                    for start, end in room_data['vacant_times'].get(day, [])
+                ]
+            
+            final_rooms[str(room_key)] = final_room
 
-        return vacancies
+        print("\nFinal data structure verification:")
+        print(f"Number of rooms: {len(final_rooms)}")
+        if final_rooms:
+            sample_key = next(iter(final_rooms))
+            print(f"Sample final room: {sample_key}: {final_rooms[sample_key]}")
+        
+        # Before returning, verify all time blocks are tuples
+        for room_data in final_rooms.values():
+            for day_times in room_data['vacant_times'].values():
+                for i, time_block in enumerate(day_times):
+                    if not isinstance(time_block, tuple):
+                        day_times[i] = tuple(time_block)
+
+        # Before returning, add one final verification
+        print("\nFinal verification before return:")
+        print(f"Type of return value: {type(final_rooms)}")
+        print(f"Keys in return value: {list(final_rooms.keys())}")
+        print(f"Sample value type: {type(final_rooms[next(iter(final_rooms))])}")
+        
+        # Store the return value first
+        result = final_rooms
+        
+        # Verify it's still a dictionary
+        assert isinstance(result, dict), "Result is not a dictionary!"
+        assert all(isinstance(v, dict) for v in result.values()), "Not all values are dictionaries!"
+        
+        print("Final verification passed - returning dictionary")
+        return result
+
     except Exception as e:
         print(f"Error in find_vacant_rooms: {e}")
-        print(
-            f"Term value being searched for: {term}"
-        )  # Debug: see what we're searching for
+        print(f"Error type: {type(e)}")
+        print(f"Error location: {e.__traceback__.tb_frame.f_code.co_name}")
+        import traceback
+        traceback.print_exc()
         raise
+
+
+def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
+    """Check if two time ranges overlap"""
+    try:
+        s1 = parse_time(start1)
+        e1 = parse_time(end1)
+        s2 = parse_time(start2)
+        e2 = parse_time(end2)
+        
+        if None in (s1, e1, s2, e2):
+            return True  # Assume overlap if we can't parse times
+            
+        return max(s1, s2) < min(e1, e2)
+    except Exception as e:
+        print(f"Error comparing times: {start1}-{end1} with {start2}-{end2}: {e}")
+        return True  # Assume overlap on error
 
 
 def get_formatted_blocks(blocks, all_blocks):

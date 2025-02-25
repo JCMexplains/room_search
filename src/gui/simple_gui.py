@@ -148,13 +148,14 @@ class RoomFinderGUI:
             self.results.insert(tk.END, "Times: " + "".join(header_times) + "\n")
             self.results.insert(tk.END, "-" * (len(header_times) * 14 + 20) + "\n")
 
-            for room, days in vacant_rooms.items():
+            for room_key, room_data in vacant_rooms.items():
+                building, room = room_key.split('-')
                 self.results.insert(
                     tk.END,
-                    f"\nBuilding {room[0]}, Room {room[1]} (Cap: {days[list(days.keys())[0]][0]}):\n",
+                    f"\nBuilding {building}, Room {room} (Cap: {room_data['capacity']}):\n",
                 )
-                for day, (cap, blocks) in days.items():
-                    formatted_blocks = get_formatted_blocks(blocks, all_blocks)
+                for day, times in room_data['vacant_times'].items():
+                    formatted_blocks = get_formatted_blocks(times, all_blocks)
                     self.results.insert(
                         tk.END, f"{day:<6}: {''.join(formatted_blocks)}\n"
                     )

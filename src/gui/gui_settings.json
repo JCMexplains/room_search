@@ -6,7 +6,7 @@
         "T": true,
         "W": true,
         "R": true,
-        "F": false,
+        "F": true,
         "S": true
     }
 }

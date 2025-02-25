@@ -1,3 +1,6 @@
+# Define valid sessions
+VALID_SESSIONS = {1, 2, 3, 4}
+
 # Define column types
 dtypes = {
     "building": int,
