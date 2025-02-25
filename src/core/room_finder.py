@@ -63,8 +63,8 @@ def is_conflict(class_time: Tuple[time, time], block_time: Tuple[time, time]) ->
 
 
 def find_vacant_rooms(
-    term: int, session: int, days: List[str], data_file: str = "data.csv"
-) -> Dict[Tuple[int, int], Dict[str, Tuple[int, List[Tuple[time, time]]]]]:
+    term: int, session: int, days: List[str], data_file: str = "*data*.csv"
+) -> Dict[Tuple[int, int], Dict[str, Tuple[int, List[Tuple[time, time]]]]]]:
 
     # Define column name mappings (original -> standardized)
     COLUMN_MAPPING = {
@@ -79,8 +79,13 @@ def find_vacant_rooms(
     }
 
     try:
+        # Find the first matching data file
+        data_files = list(Path("data").glob(data_file))
+        if not data_files:
+            raise FileNotFoundError(f"No files matching '{data_file}' found in data directory")
+        
         # Read data and standardize column names
-        df = pd.read_csv(f"data/{data_file}")
+        df = pd.read_csv(data_files[0])
 
         # Print original columns for debugging
         print("Original columns:", df.columns.tolist())
