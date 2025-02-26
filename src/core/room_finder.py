@@ -1,11 +1,13 @@
+import glob
 import logging
 import os
+from copy import deepcopy
 from datetime import date, datetime, time
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union
-import glob
-from copy import deepcopy
+
 import pandas as pd
+
 from src.utils.date_utils import parse_time
 
 # Get project root directory (assuming src is a subdirectory of the project root)
@@ -24,11 +26,14 @@ logging.basicConfig(
     ],
 )
 
-from src.core.constants.my_rooms import MY_ROOMS
-from src.core.constants.term_session_dates import get_overlapping_sessions, is_summer_term
-from src.core.constants.time_blocks import TIME_BLOCKS
 from src.core.constants.col_types import VALID_SESSIONS
+from src.core.constants.my_rooms import MY_ROOMS
 from src.core.constants.room_caps import get_room_cap
+from src.core.constants.term_session_dates import (
+    get_overlapping_sessions,
+    is_summer_term,
+)
+from src.core.constants.time_blocks import TIME_BLOCKS
 
 
 def parse_time(time_str: str) -> datetime:
@@ -81,7 +86,7 @@ def find_vacant_rooms(
         # At the very start, verify TIME_BLOCKS
         print("TIME_BLOCKS type:", type(TIME_BLOCKS))
         print("TIME_BLOCKS sample:", list(TIME_BLOCKS)[:2])
-        
+
         # Define column name mappings (original -> standardized)
         COLUMN_MAPPING = {
             "Term": "term",
@@ -95,9 +100,11 @@ def find_vacant_rooms(
         }
 
         print(f"Received days parameter: {days} (type: {type(days)})")
-        
+
         # Find the most recent data file
-        data_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "*data*.csv")
+        data_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "data", "*data*.csv"
+        )
         data_files = glob.glob(data_path)
         if not data_files:
             print(f"Searching for data files in: {data_path}")
@@ -109,70 +116,88 @@ def find_vacant_rooms(
         df = pd.read_csv(
             latest_file,
             dtype={
-                'building': str,  # Read as string first to handle 'TBA'
-                'room_number': float,
-                'room_cap': 'Int64',  # Use nullable integer type
-                'days': str,
-                'session': 'Int64',
-                'term': 'Int64'
-            }
+                "building": str,  # Read as string first to handle 'TBA'
+                "room_number": float,
+                "room_cap": "Int64",  # Use nullable integer type
+                "days": str,
+                "session": "Int64",
+                "term": "Int64",
+            },
         )
 
         # Filter out rows where building is 'TBA' or non-numeric
-        df = df[df['building'].str.isnumeric().fillna(False)]
+        df = df[df["building"].str.isnumeric().fillna(False)]
         # Now convert building to int
-        df['building'] = df['building'].astype(int)
+        df["building"] = df["building"].astype(int)
 
         # Check for invalid sessions but don't raise error
-        invalid_sessions = [s for s in df["session"].unique() if s not in VALID_SESSIONS]
+        invalid_sessions = [
+            s for s in df["session"].unique() if s not in VALID_SESSIONS
+        ]
         if invalid_sessions:
-            logging.warning(f"Skipping rows with invalid session numbers: {invalid_sessions}")
+            logging.warning(
+                f"Skipping rows with invalid session numbers: {invalid_sessions}"
+            )
             # Filter out invalid sessions
             df = df[df["session"].isin(VALID_SESSIONS)]
 
         # Check if it's a summer term
         is_summer = is_summer_term(term)
-        
+
         # Get all sessions that overlap with the requested session
         overlapping_sessions = get_overlapping_sessions(session, is_summer)
-        
+
         # Filter data to include all overlapping sessions
         filtered_df = df[
-            (df['term'] == term) & 
-            (df['session'].isin(overlapping_sessions))
+            (df["term"] == term) & (df["session"].isin(overlapping_sessions))
         ]
         print(f"Found {len(filtered_df)} rows after filtering")
 
         # Print sample of filtered data
         print("\nSample of filtered data:")
-        print(filtered_df[['building', 'room_number', 'room_cap', 'start_time', 'end_time', 'days']].head())
+        print(
+            filtered_df[
+                [
+                    "building",
+                    "room_number",
+                    "room_cap",
+                    "start_time",
+                    "end_time",
+                    "days",
+                ]
+            ].head()
+        )
         print("\nSample of days column after filtering:")
-        print(filtered_df['days'].head())
-        print("Days column type:", filtered_df['days'].dtype)
+        print(filtered_df["days"].head())
+        print("Days column type:", filtered_df["days"].dtype)
 
         # Create a set of occupied time slots for each room
         occupied_slots = {}
         for _, row in filtered_df.iterrows():
             try:
-                building = int(row['building'])
-                room = int(float(row['room_number'])) if pd.notna(row['room_number']) else None
-                start = str(row['start_time'])
-                end = str(row['end_time'])
-                days_raw = row['days']
-                
+                building = int(row["building"])
+                room = (
+                    int(float(row["room_number"]))
+                    if pd.notna(row["room_number"])
+                    else None
+                )
+                start = str(row["start_time"])
+                end = str(row["end_time"])
+                days_raw = row["days"]
+
                 # Skip if we don't have valid building and room
                 if room is None or pd.isna(building):
                     continue
-                    
+
                 room_key = f"{building}-{room}"
-                
+
                 # Skip invalid time entries
                 if pd.isna(start) or pd.isna(end):
                     continue
-                    
+
                 if room_key not in occupied_slots:
-                    occupied_slots[room_key] = {d: [] for d in 'MTWRFS'}
-                
+                    occupied_slots[room_key] = {d: [] for d in "MTWRFS"}
+
                 # Handle combined day codes (e.g., 'TR' -> ['T', 'R'])
                 if pd.notna(days_raw):
                     # Convert to string and handle any numeric values
@@ -180,9 +205,9 @@ def find_vacant_rooms(
                     if days_str.isdigit():
                         print(f"Warning: Numeric day value found: {days_str}")
                         continue
-                        
+
                     # Convert day codes like 'TR' into individual days
-                    day_chars = [c for c in days_str if c in 'MTWRFS']
+                    day_chars = [c for c in days_str if c in "MTWRFS"]
                     for day in day_chars:
                         if (start, end) not in occupied_slots[room_key][day]:
                             occupied_slots[room_key][day].append((start, end))
@@ -200,44 +225,48 @@ def find_vacant_rooms(
         # Now create the vacant rooms dictionary
         vacant_rooms = {}
         print("\nProcessing MY_ROOMS:", MY_ROOMS)  # Debug print
-        
+
         for building, room in MY_ROOMS:
             try:
                 room_key = f"{building}-{room}"
                 print(f"\nProcessing room {room_key}")  # Debug print
-                
+
                 # Get room capacity from constants
                 room_cap = get_room_cap(building, room)
-                
+
                 vacant_times = {}
                 # Process each requested day
                 for day in days:
                     print(f"  Checking day {day}")  # Debug print
                     vacant_times[day] = []  # Initialize empty list for this day
-                    
+
                     if room_key not in occupied_slots:
                         # Room has no occupancy data, all times are vacant
-                        print(f"    No occupancy data for {room_key} - marking all times vacant")
+                        print(
+                            f"    No occupancy data for {room_key} - marking all times vacant"
+                        )
                         vacant_times[day] = list(TIME_BLOCKS)
                     else:
                         # Get occupied times for this day
                         occupied = occupied_slots[room_key].get(day, [])
                         print(f"    Found {len(occupied)} occupied times")
-                        
+
                         # Check each time block
                         for time_block in TIME_BLOCKS:
                             is_vacant = True
                             for occ_start, occ_end in occupied:
-                                if overlaps(time_block[0], time_block[1], occ_start, occ_end):
+                                if overlaps(
+                                    time_block[0], time_block[1], occ_start, occ_end
+                                ):
                                     is_vacant = False
                                     break
                             if is_vacant:
                                 vacant_times[day].append(time_block)
-                
+
                 # Always include the room, even if it has no vacant times
                 vacant_rooms[room_key] = {
-                    'capacity': room_cap,
-                    'vacant_times': vacant_times
+                    "capacity": room_cap,
+                    "vacant_times": vacant_times,
                 }
 
             except Exception as e:
@@ -251,23 +280,23 @@ def find_vacant_rooms(
             print(f"Sample vacant room data structure:")
             print(f"Key: {sample_key}")
             print(f"Value: {vacant_rooms[sample_key]}")
-        
+
         # Ensure consistent data structure for all rooms
         final_rooms = {}
         for room_key, room_data in vacant_rooms.items():
             # Ensure each room has both capacity and vacant_times
             final_room = {
-                'capacity': int(room_data.get('capacity', 0)),
-                'vacant_times': {}
+                "capacity": int(room_data.get("capacity", 0)),
+                "vacant_times": {},
             }
-            
+
             # Ensure each day has a list of time tuples
             for day in days:
-                final_room['vacant_times'][day] = [
-                    (str(start), str(end)) 
-                    for start, end in room_data['vacant_times'].get(day, [])
+                final_room["vacant_times"][day] = [
+                    (str(start), str(end))
+                    for start, end in room_data["vacant_times"].get(day, [])
                 ]
-            
+
             final_rooms[str(room_key)] = final_room
 
         print("\nFinal data structure verification:")
@@ -275,10 +304,10 @@ def find_vacant_rooms(
         if final_rooms:
             sample_key = next(iter(final_rooms))
             print(f"Sample final room: {sample_key}: {final_rooms[sample_key]}")
-        
+
         # Before returning, verify all time blocks are tuples
         for room_data in final_rooms.values():
-            for day_times in room_data['vacant_times'].values():
+            for day_times in room_data["vacant_times"].values():
                 for i, time_block in enumerate(day_times):
                     if not isinstance(time_block, tuple):
                         day_times[i] = tuple(time_block)
@@ -288,14 +317,16 @@ def find_vacant_rooms(
         print(f"Type of return value: {type(final_rooms)}")
         print(f"Keys in return value: {list(final_rooms.keys())}")
         print(f"Sample value type: {type(final_rooms[next(iter(final_rooms))])}")
-        
+
         # Store the return value first
         result = final_rooms
-        
+
         # Verify it's still a dictionary
         assert isinstance(result, dict), "Result is not a dictionary!"
-        assert all(isinstance(v, dict) for v in result.values()), "Not all values are dictionaries!"
-        
+        assert all(
+            isinstance(v, dict) for v in result.values()
+        ), "Not all values are dictionaries!"
+
         print("Final verification passed - returning dictionary")
         return result
 
@@ -304,6 +335,7 @@ def find_vacant_rooms(
         print(f"Error type: {type(e)}")
         print(f"Error location: {e.__traceback__.tb_frame.f_code.co_name}")
         import traceback
+
         traceback.print_exc()
         raise
 
@@ -315,11 +347,11 @@ def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
         e1 = parse_time(end1)
         s2 = parse_time(start2)
         e2 = parse_time(end2)
-        
+
         if None in (s1, e1, s2, e2):
             print(f"Warning: Could not parse times: {start1}-{end1} vs {start2}-{end2}")
             return True  # Assume overlap if we can't parse times
-            
+
         return (s1 <= e2) and (e1 >= s2)
     except Exception as e:
         print(f"Error comparing times: {start1}-{end1} with {start2}-{end2}: {e}")
@@ -329,28 +361,29 @@ def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
 def get_formatted_blocks(blocks, all_blocks):
     """Convert time blocks to formatted strings, with blanks for occupied times"""
     formatted = []
-    
+
     print("Blocks:", blocks)
-    
+
     # Convert blocks to comparable format
     blocks_set = {
-        (parse_time(start).time(), parse_time(end).time())
-        for start, end in blocks
+        (parse_time(start).time(), parse_time(end).time()) for start, end in blocks
     }
-    
+
     for block in all_blocks:
         if block in blocks_set:
             # Room is vacant - show the time
-            formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
+            formatted.append(
+                f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}"
+            )
         else:
             # Room is occupied - show blank space
             formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
         formatted.append("   ")  # Add 3 spaces of padding between blocks
-    
+
     # Remove the trailing padding from the last block
     if formatted:
         formatted.pop()
-    
+
     return formatted
 
 
@@ -358,9 +391,7 @@ def print_vacancies(
     vacancies: Dict[Tuple[int, int], Dict[str, List[Tuple[time, time]]]]
 ):
     # Get all possible time blocks from constants
-    all_blocks = [
-        (parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS
-    ]
+    all_blocks = [(parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS]
 
     # Print header with time blocks
     header_times = [
