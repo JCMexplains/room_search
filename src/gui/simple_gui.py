@@ -21,9 +21,11 @@ def load_data():
         raise FileNotFoundError(f"No data files found matching pattern: {data_pattern}")
 
     df = pd.read_csv(matching_files[0])  # Use the first matching file
-    print("Original columns:", df.columns.tolist())  # Debug
-    df.columns = df.columns.str.lower()  # Standardize all column names to lowercase
-    print("Lowercase columns:", df.columns.tolist())  # Debug
+    # print("Original columns:", df.columns.tolist())  # Debug
+    df.columns = (
+        df.columns.str.lower()
+    )  # Standardize all column names to lowercase for safety
+    # print("Lowercase columns:", df.columns.tolist())  # Debug
     return df
 
 
@@ -149,14 +151,16 @@ class RoomFinderGUI:
             self.results.insert(tk.END, "-" * (len(header_times) * 14 + 20) + "\n")
 
             for room_key, room_data in vacant_rooms.items():
-                building, room = room_key.split('-')
+                building, room = room_key.split("-")
                 self.results.insert(
                     tk.END,
                     f"\nBuilding {building}, Room {room} (Cap: {room_data['capacity']}):\n",
                 )
-                for day, times in room_data['vacant_times'].items():
+                for day, times in room_data["vacant_times"].items():
                     formatted_blocks = get_formatted_blocks(times, all_blocks)
-                    print("Blocks Set:", {block for block in all_blocks if block in times})
+                    print(
+                        "Blocks Set:", {block for block in all_blocks if block in times}
+                    )
                     print("All Blocks:", all_blocks)
                     self.results.insert(
                         tk.END, f"{day:<6}: {''.join(formatted_blocks)}\n"
