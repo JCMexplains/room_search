@@ -25,7 +25,7 @@ logging.basicConfig(
 )
 
 from src.core.constants.my_rooms import MY_ROOMS
-from src.core.constants.term_session_dates import get_dates
+from src.core.constants.term_session_dates import get_overlapping_sessions, is_summer_term
 from src.core.constants.time_blocks import TIME_BLOCKS
 from src.core.constants.col_types import VALID_SESSIONS
 from src.core.constants.room_caps import get_room_cap
@@ -130,24 +130,29 @@ def find_vacant_rooms(
             # Filter out invalid sessions
             df = df[df["session"].isin(VALID_SESSIONS)]
 
-        # Filter for term and session FIRST
-        print(f"Filtering for term {term} and session {session}")
-        df = df[
-            (df["term"] == int(term)) & 
-            (df["session"] == int(session))
+        # Check if it's a summer term
+        is_summer = is_summer_term(term)
+        
+        # Get all sessions that overlap with the requested session
+        overlapping_sessions = get_overlapping_sessions(session, is_summer)
+        
+        # Filter data to include all overlapping sessions
+        filtered_df = df[
+            (df['term'] == term) & 
+            (df['session'].isin(overlapping_sessions))
         ]
-        print(f"Found {len(df)} rows after filtering")
+        print(f"Found {len(filtered_df)} rows after filtering")
 
         # Print sample of filtered data
         print("\nSample of filtered data:")
-        print(df[['building', 'room_number', 'room_cap', 'start_time', 'end_time', 'days']].head())
+        print(filtered_df[['building', 'room_number', 'room_cap', 'start_time', 'end_time', 'days']].head())
         print("\nSample of days column after filtering:")
-        print(df['days'].head())
-        print("Days column type:", df['days'].dtype)
+        print(filtered_df['days'].head())
+        print("Days column type:", filtered_df['days'].dtype)
 
         # Create a set of occupied time slots for each room
         occupied_slots = {}
-        for _, row in df.iterrows():
+        for _, row in filtered_df.iterrows():
             try:
                 building = int(row['building'])
                 room = int(float(row['room_number'])) if pd.notna(row['room_number']) else None

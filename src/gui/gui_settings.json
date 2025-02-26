@@ -1,12 +1,12 @@
 {
     "term": "20252",
-    "session": "4",
+    "session": "1",
     "days": {
         "M": true,
-        "T": true,
-        "W": true,
-        "R": true,
-        "F": true,
-        "S": true
+        "T": false,
+        "W": false,
+        "R": false,
+        "F": false,
+        "S": false
     }
 }

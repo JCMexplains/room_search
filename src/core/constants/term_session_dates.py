@@ -1,34 +1,92 @@
-TERM_SESSION_DATES = {
-    # (Term, Session): (Start Date, End Date)
-    (20251, 1): ("2024-08-16", "2024-12-10"),
-    (20251, 2): ("2024-08-16", "2024-10-08"),
-    (20251, 3): ("2024-09-04", "2024-11-26"),
-    (20251, 4): ("2024-10-14", "2024-12-10"),
-    (20252, 1): ("2025-01-06", "2025-05-04"),
-    (20252, 2): ("2025-01-06", "2025-03-02"),
-    (20252, 3): ("2025-01-22", "2025-04-18"),
-    (20252, 4): ("2025-03-13", "2025-05-04"),
-    (20253, 1): ("2025-05-13", "2025-08-05"),
-    (20253, 2): ("2025-05-13", "2025-06-23"),
-    (20253, 3): ("2025-06-26", "2025-08-05"),
+from typing import List, Tuple
+from datetime import time
+
+# Define which sessions overlap with each session
+# This follows the diagram in the image
+SESSION_OVERLAPS = {
+    # For each session, list the sessions that overlap with it
+    1: [1],           # Session 1 (full term) only overlaps with itself
+    2: [1, 2],        # Session 2 (first half) overlaps with Session 1 and itself
+    3: [1, 3],        # Session 3 (middle part) overlaps with Session 1 and itself
+    4: [1, 3, 4],     # Session 4 (second half) overlaps with Sessions 1, 3, and itself
 }
 
+# For summer term
+SUMMER_SESSION_OVERLAPS = {
+    1: [1],           # Session 1 (full summer) only overlaps with itself
+    2: [1, 2],        # Session 2 (first half) overlaps with Session 1 and itself
+    3: [1, 3],        # Session 3 (second half) overlaps with Session 1 and itself
+}
 
-def get_dates(term, session) -> tuple[str | None, str | None]:
+def get_overlapping_sessions(session: int, is_summer: bool = False) -> List[int]:
     """
-    Look up the start and end dates for a given term and session.
-
-    :param term: The term code (integer)
-    :param session: The session number (integer)
-    :return: A tuple of (start_date, end_date) or (None, None) if not found
+    Get a list of sessions that overlap with the given session.
+    
+    Args:
+        session: The session number (integer)
+        is_summer: Whether this is a summer term (default: False)
+    
+    Returns:
+        A list of session numbers that overlap with the given session
     """
-
-    # Convert term and session to integers if they're not already
     try:
-        term = int(term)
         session = int(session)
+        if is_summer:
+            return SUMMER_SESSION_OVERLAPS.get(session, [])
+        else:
+            return SESSION_OVERLAPS.get(session, [])
     except ValueError:
-        # print(f"Debug: Could not convert Term or Session to int")
-        return (None, None)
-    result = TERM_SESSION_DATES.get((term, session), (None, None))
-    return result
+        return []
+
+def is_summer_term(term: int) -> bool:
+    """
+    Determine if a term is a summer term based on its code.
+    
+    Args:
+        term: The term code (integer)
+        
+    Returns:
+        True if it's a summer term, False otherwise
+    """
+    # Convert to string and check if the last digit is 3
+    # (assuming term codes end with 1=Fall, 2=Spring, 3=Summer)
+    try:
+        term_str = str(term)
+        return term_str[-1] == '3'
+    except (ValueError, IndexError):
+        return False
+
+def get_formatted_blocks(blocks, all_blocks, session_dates):
+    """Convert time blocks to formatted strings, with blanks for occupied times"""
+    formatted = []
+    
+    # Convert blocks to comparable format
+    blocks_set = {
+        (parse_time(start).time(), parse_time(end).time())
+        for start, end in blocks
+    }
+    
+    for block in all_blocks:
+        if any(is_conflict(block, class_block) for class_block in blocks_set):
+            # Room is occupied - show blank space
+            formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
+        else:
+            # Room is vacant - show the time
+            formatted.append(f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}")
+        formatted.append("   ")  # Add 3 spaces of padding between blocks
+    
+    # Remove the trailing padding from the last block
+    if formatted:
+        formatted.pop()
+    
+    return formatted
+
+def is_conflict(class_time: Tuple[time, time], block_time: Tuple[time, time]) -> bool:
+    class_start, class_end = class_time
+    block_start, block_end = block_time
+    return (class_start < block_end) and (block_start < class_end)
+
+def check_overlaps(blocks, session_dates):
+    for block in blocks:
+        print(f"Checking block {block} against session dates {session_dates}")
+        # Logic to check overlaps

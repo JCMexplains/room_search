@@ -9,6 +9,7 @@ from src.core.constants.time_blocks import TIME_BLOCKS
 from src.core.room_finder import PROJECT_ROOT, find_vacant_rooms, get_formatted_blocks
 from src.utils.date_utils import parse_time
 from src.utils.settings import load_settings, save_settings
+from src.core.constants.term_session_dates import get_overlapping_sessions, is_summer_term
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -167,6 +168,16 @@ class RoomFinderGUI:
                     )
         except Exception as e:
             print(f"Error searching: {e}")
+
+    def update_session_info(self):
+        term = int(self.term_var.get())
+        session = int(self.session_var.get())
+        is_summer = is_summer_term(term)
+        overlapping_sessions = get_overlapping_sessions(session, is_summer)
+        
+        # Update display with overlapping sessions
+        session_info = f"Session {session} overlaps with sessions: {', '.join(map(str, overlapping_sessions))}"
+        self.session_info_label.config(text=session_info)
 
 
 def main():
