@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from datetime import time
-
+from src.utils.date_utils import parse_time
 # Define which sessions overlap with each session
 # This follows the diagram in the image
 SESSION_OVERLAPS = {
