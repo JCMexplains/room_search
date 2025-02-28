@@ -1,17 +1,20 @@
-"""
-Constants for my preferred rooms.
-"""
+# List of tuples containing (Building, Room) pairs
+# Both Building and Room are represented as integers
 
-# List of rooms to check for vacancy
-# Format: List of tuples (building_number, room_number)
 MY_ROOMS = [
-    (1, 101),
-    (1, 102),
-    (1, 103),
-    (2, 201),
-    (2, 202),
-    (3, 301),
-    (3, 302),
+    (3, 113),
+    (5, 103),
+    (5, 104),
+    (5, 105),
+    (5, 106),
+    (5, 111),
+    (5, 113),
+    (5, 211),
+    (5, 212),
+    (5, 215),
+    (9, 230),
+    (15, 103),
+    (22, 152),
 ]
 
 
