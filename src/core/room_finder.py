@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import sys
 from datetime import date, datetime, time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -24,8 +25,17 @@ logging.basicConfig(
 )
 
 from src.core.constants.my_rooms import MY_ROOMS
-from src.core.constants.room_caps import get_room_cap
+from src.core.constants.room_caps import ROOM_CAPS
 from src.core.constants.time_blocks import TIME_BLOCKS
+
+
+def get_room_cap(building: int, room: int) -> int:
+    """Get room capacity, raises KeyError if not found"""
+    if (building, room) not in ROOM_CAPS:
+        raise KeyError(
+            f"Room {room} in building {building} not found in room capacity data"
+        )
+    return ROOM_CAPS[(building, room)]
 
 
 def parse_time(time_str: str) -> datetime:
@@ -74,8 +84,8 @@ def find_vacant_rooms(
 
     try:
         # At the very start, verify TIME_BLOCKS
-        print("TIME_BLOCKS type:", type(TIME_BLOCKS))
-        print("TIME_BLOCKS sample:", list(TIME_BLOCKS)[:2])
+        # print("TIME_BLOCKS type:", type(TIME_BLOCKS))
+        # print("TIME_BLOCKS sample:", list(TIME_BLOCKS)[:2])
 
         # Define column name mappings (original -> standardized)
         COLUMN_MAPPING = {
@@ -123,22 +133,22 @@ def find_vacant_rooms(
         print(f"Found {len(filtered_df)} rows after filtering")
 
         # Print sample of filtered data
-        print("\nSample of filtered data:")
-        print(
-            filtered_df[
-                [
-                    "building",
-                    "room_number",
-                    "room_cap",
-                    "start_time",
-                    "end_time",
-                    "days",
-                ]
-            ].head()
-        )
-        print("\nSample of days column after filtering:")
-        print(filtered_df["days"].head())
-        print("Days column type:", filtered_df["days"].dtype)
+        # print("\nSample of filtered data:")
+        # print(
+        #     filtered_df[
+        #         [
+        #             "building",
+        #             "room_number",
+        #             "room_cap",
+        #             "start_time",
+        #             "end_time",
+        #             "days",
+        #         ]
+        #     ].head()
+        # )
+        # print("\nSample of days column after filtering:")
+        # print(filtered_df["days"].head())
+        # print("Days column type:", filtered_df["days"].dtype)
 
         # Create a set of occupied time slots for each room
         occupied_slots = {}
@@ -186,10 +196,10 @@ def find_vacant_rooms(
                 print(f"Row data: days={days_raw}, building={building}, room={room}")
                 continue
 
-        print("\nOccupied slots sample:")
-        # Print first few entries of occupied_slots
-        for key in list(occupied_slots.keys())[:3]:
-            print(f"{key}: {occupied_slots[key]}")
+        # print("\nOccupied slots sample:")
+        # # Print first few entries of occupied_slots
+        # for key in list(occupied_slots.keys())[:3]:
+        #     print(f"{key}: {occupied_slots[key]}")
 
         # Now create the vacant rooms dictionary
         vacant_rooms = {}
@@ -201,7 +211,14 @@ def find_vacant_rooms(
                 print(f"\nProcessing room {room_key}")  # Debug print
 
                 # Get room capacity from constants
-                room_cap = get_room_cap(building, room)
+                try:
+                    room_cap = get_room_cap(building, room)
+                except KeyError:
+                    logging.critical(
+                        f"Room {room} in building {building} not found in capacity data"
+                    )
+                    print(f"ERROR: Room {room} in building {building} not found")
+                    sys.exit(1)
 
                 vacant_times = {}
                 # Process each requested day
