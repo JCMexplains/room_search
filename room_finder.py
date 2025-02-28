@@ -1,71 +1,10 @@
-from datetime import time
-from typing import List, Tuple
-
-# Define which sessions overlap with each session
-# This follows the diagram in the image
-SESSION_OVERLAPS = {
-    # For each session, list the sessions that overlap with it
-    1: [1],  # Session 1 (full term) only overlaps with itself
-    2: [1, 2],  # Session 2 (first half) overlaps with Session 1 and itself
-    3: [1, 3],  # Session 3 (middle part) overlaps with Session 1 and itself
-    4: [1, 3, 4],  # Session 4 (second half) overlaps with Sessions 1, 3, and itself
-}
-
-# For summer term
-SUMMER_SESSION_OVERLAPS = {
-    1: [1],  # Session 1 (full summer) only overlaps with itself
-    2: [1, 2],  # Session 2 (first half) overlaps with Session 1 and itself
-    3: [1, 3],  # Session 3 (second half) overlaps with Session 1 and itself
-}
-
-
 def parse_time(time_str):
     """Parse a time string in HH:MM format to a time object"""
     hours, minutes = map(int, time_str.split(":"))
     return time(hour=hours, minute=minutes)
 
 
-def get_overlapping_sessions(session: int, is_summer: bool = False) -> List[int]:
-    """
-    Get a list of sessions that overlap with the given session.
-
-    Args:
-        session: The session number (integer)
-        is_summer: Whether this is a summer term (default: False)
-
-    Returns:
-        A list of session numbers that overlap with the given session
-    """
-    try:
-        session = int(session)
-        if is_summer:
-            return SUMMER_SESSION_OVERLAPS.get(session, [])
-        else:
-            return SESSION_OVERLAPS.get(session, [])
-    except ValueError:
-        return []
-
-
-def is_summer_term(term: int) -> bool:
-    """
-    Determine if a term is a summer term based on its code.
-
-    Args:
-        term: The term code (integer)
-
-    Returns:
-        True if it's a summer term, False otherwise
-    """
-    # Convert to string and check if the last digit is 3
-    # (assuming term codes end with 1=Fall, 2=Spring, 3=Summer)
-    try:
-        term_str = str(term)
-        return term_str[-1] == "3"
-    except (ValueError, IndexError):
-        return False
-
-
-def get_formatted_blocks(blocks, all_blocks, session_dates):
+def get_formatted_blocks(blocks, all_blocks, session_dates=None):
     """Convert time blocks to formatted strings, with blanks for occupied times"""
     formatted = []
 
@@ -92,13 +31,12 @@ def get_formatted_blocks(blocks, all_blocks, session_dates):
     return formatted
 
 
-def is_conflict(class_time: Tuple[time, time], block_time: Tuple[time, time]) -> bool:
-    class_start, class_end = class_time
-    block_start, block_end = block_time
-    return (class_start < block_end) and (block_start < class_end)
+def check_overlaps(blocks, session_dates=None):
+    if not session_dates:
+        return blocks
 
-
-def check_overlaps(blocks, session_dates):
     for block in blocks:
         print(f"Checking block {block} against session dates {session_dates}")
         # Logic to check overlaps
+
+    return blocks
