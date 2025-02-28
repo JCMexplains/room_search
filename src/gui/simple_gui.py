@@ -1,5 +1,6 @@
 import glob
 import tkinter as tk
+from collections import defaultdict
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -99,6 +100,14 @@ class RoomFinderGUI:
         self.days_frame.grid(row=1, column=1, sticky=tk.W, pady=5)
 
         self.day_vars = {}
+        self.day_names = {
+            "M": "Monday",
+            "T": "Tuesday",
+            "W": "Wednesday",
+            "R": "Thursday",
+            "F": "Friday",
+            "S": "Saturday",
+        }
         days = [
             ("Monday", "M"),
             ("Tuesday", "T"),
@@ -118,9 +127,9 @@ class RoomFinderGUI:
             row=2, column=0, columnspan=2, pady=10
         )
 
-        # Results frame
+        # Create a frame for the results
         self.results_frame = ttk.LabelFrame(
-            self.main_frame, text="Results", padding="10"
+            self.main_frame, text="Available Time Blocks", padding="10"
         )
         self.results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
@@ -128,34 +137,40 @@ class RoomFinderGUI:
         tree_frame = ttk.Frame(self.results_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create the treeview
-        self.tree = ttk.Treeview(tree_frame)
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Create the treeview for time blocks
+        self.time_treeview = ttk.Treeview(tree_frame)
+        self.time_treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Add a scrollbar
         scrollbar = ttk.Scrollbar(
-            tree_frame, orient="vertical", command=self.tree.yview
+            tree_frame, orient="vertical", command=self.time_treeview.yview
         )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.time_treeview.configure(yscrollcommand=scrollbar.set)
 
         # Configure the treeview columns
-        self.tree["columns"] = ("building", "room", "capacity")
-        self.tree.column("#0", width=0, stretch=tk.NO)  # Hide the first column
-        self.tree.column("building", anchor=tk.W, width=80)
-        self.tree.column("room", anchor=tk.W, width=80)
-        self.tree.column("capacity", anchor=tk.W, width=80)
+        self.time_treeview["columns"] = ("time_block", "days", "num_rooms")
+        self.time_treeview.column("#0", width=0, stretch=tk.NO)  # Hide the first column
+        self.time_treeview.column("time_block", anchor=tk.W, width=150)
+        self.time_treeview.column("days", anchor=tk.W, width=150)
+        self.time_treeview.column("num_rooms", anchor=tk.CENTER, width=100)
 
-        self.tree.heading("building", text="Building")
-        self.tree.heading("room", text="Room")
-        self.tree.heading("capacity", text="Capacity")
+        self.time_treeview.heading("time_block", text="Time Block")
+        self.time_treeview.heading("days", text="Days")
+        self.time_treeview.heading("num_rooms", text="Available Rooms")
 
         # Bind the treeview selection event
-        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        self.time_treeview.bind("<<TreeviewSelect>>", self.on_time_block_select)
+
+        # Store the search results
+        self.results = {}
+
+        # Dictionary to store time blocks and rooms
+        self.common_time_blocks = {}
 
         # Create a frame for displaying room details
         self.detail_frame = ttk.LabelFrame(
-            self.main_frame, text="Room Details", padding="10"
+            self.main_frame, text="Available Rooms", padding="10"
         )
         self.detail_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
@@ -169,9 +184,6 @@ class RoomFinderGUI:
             root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W
         )
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        # Store the search results
-        self.results = {}
 
         # Set initial status
         self.status_var.set(
@@ -198,70 +210,155 @@ class RoomFinderGUI:
             self.results = find_vacant_rooms(term, selected_days)
 
             # Clear the treeview
-            for item in self.tree.get_children():
-                self.tree.delete(item)
+            for item in self.time_treeview.get_children():
+                self.time_treeview.delete(item)
 
-            # Populate the treeview with results
-            for room_key, room_data in self.results.items():
-                building, room = room_key.split("-")
-                capacity = room_data["capacity"]
-                self.tree.insert(
-                    "", tk.END, values=(building, room, capacity), iid=room_key
-                )
+            # Find time blocks that are common across all selected days
+            self.find_common_time_blocks(selected_days)
+
+            # Clear the detail text
+            self.detail_text.delete(1.0, tk.END)
+            self.detail_text.insert(
+                tk.END, "Select a time block to see available rooms."
+            )
 
             # Update status
-            self.status_var.set(f"Found {len(self.results)} rooms")
+            total_rooms = sum(len(rooms) for rooms in self.common_time_blocks.values())
+            self.status_var.set(
+                f"Found {len(self.common_time_blocks)} time blocks available on all selected days"
+            )
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {str(e)}")
             self.status_var.set("Error occurred during search")
+            import traceback
 
-    def on_tree_select(self, event):
-        """Handle treeview selection event"""
-        selected_items = self.tree.selection()
+            traceback.print_exc()
+
+    def find_common_time_blocks(self, selected_days):
+        """Find time blocks that are common across all selected days"""
+        # Dictionary to track rooms available at each time block for each day
+        time_blocks_by_day = defaultdict(lambda: defaultdict(list))
+
+        # Process each room's vacant times
+        for room_key, room_data in self.results.items():
+            building, room = room_key.split("-")
+            capacity = room_data["capacity"]
+
+            # For each day, add this room to the appropriate time blocks
+            for day, times in room_data["vacant_times"].items():
+                for start, end in times:
+                    time_block = f"{start}-{end}"
+                    room_info = {
+                        "building": building,
+                        "room": room,
+                        "capacity": capacity,
+                    }
+                    time_blocks_by_day[day][time_block].append(room_info)
+
+        # Find time blocks that exist in all selected days
+        self.common_time_blocks = {}
+
+        # Get all unique time blocks across all days
+        all_time_blocks = set()
+        for day in selected_days:
+            all_time_blocks.update(time_blocks_by_day[day].keys())
+
+        # For each time block, check if it's available on all selected days
+        for time_block in all_time_blocks:
+            # Check if this time block exists for all selected days
+            if all(time_block in time_blocks_by_day[day] for day in selected_days):
+                # Find rooms that are available at this time block on all selected days
+                common_rooms = []
+
+                # Start with rooms from the first day
+                if selected_days:
+                    first_day = selected_days[0]
+                    potential_rooms = {
+                        (room_info["building"], room_info["room"]): room_info
+                        for room_info in time_blocks_by_day[first_day][time_block]
+                    }
+
+                    # Check each room against other days
+                    for day in selected_days[1:]:
+                        day_rooms = {
+                            (room_info["building"], room_info["room"])
+                            for room_info in time_blocks_by_day[day][time_block]
+                        }
+                        # Keep only rooms that are also available on this day
+                        potential_rooms = {
+                            key: value
+                            for key, value in potential_rooms.items()
+                            if key in day_rooms
+                        }
+
+                    # Add the common rooms to our list
+                    common_rooms = list(potential_rooms.values())
+
+                if common_rooms:
+                    # Format the days string (e.g., "Tuesday, Thursday")
+                    days_str = ", ".join(self.day_names[day] for day in selected_days)
+
+                    # Add to treeview
+                    self.time_treeview.insert(
+                        "",
+                        tk.END,
+                        values=(time_block, days_str, len(common_rooms)),
+                        iid=time_block,
+                    )
+
+                    # Store the common rooms for this time block
+                    self.common_time_blocks[time_block] = common_rooms
+
+        # Sort the treeview items by start time
+        items = [
+            (self.time_treeview.item(item, "values"), item)
+            for item in self.time_treeview.get_children()
+        ]
+        items.sort(key=lambda x: parse_time(x[0][0].split("-")[0]))
+
+        # Reinsert items in sorted order
+        for values, item in items:
+            self.time_treeview.move(item, "", "end")
+
+    def on_time_block_select(self, event):
+        """Handle time block selection event"""
+        selected_items = self.time_treeview.selection()
         if not selected_items:
             return
 
-        room_key = selected_items[0]
-        room_data = self.results.get(room_key)
-        if not room_data:
+        time_block = selected_items[0]
+
+        # Make sure the time block exists in our data
+        if time_block not in self.common_time_blocks:
             return
+
+        # Get the rooms for this time block
+        rooms = self.common_time_blocks[time_block]
 
         # Clear the detail text
         self.detail_text.delete(1.0, tk.END)
 
-        # Get building and room from the key
-        building, room = room_key.split("-")
+        # Get the selected days
+        selected_days = [day for day, var in self.day_vars.items() if var.get()]
+        days_str = ", ".join(self.day_names[day] for day in selected_days)
 
-        # Display room details
-        self.detail_text.insert(tk.END, f"Building: {building}\n")
-        self.detail_text.insert(tk.END, f"Room: {room}\n")
-        self.detail_text.insert(tk.END, f"Capacity: {room_data['capacity']}\n\n")
+        # Display the time block and days
+        self.detail_text.insert(
+            tk.END, f"Available Rooms for {time_block} on {days_str}:\n\n"
+        )
 
-        # Display vacant times for each day
-        self.detail_text.insert(tk.END, "Vacant Times:\n")
-        for day, times in room_data["vacant_times"].items():
-            day_names = {
-                "M": "Monday",
-                "T": "Tuesday",
-                "W": "Wednesday",
-                "R": "Thursday",
-                "F": "Friday",
-                "S": "Saturday",
-            }
-            day_name = day_names.get(day, day)
-            self.detail_text.insert(tk.END, f"{day_name}: ")
+        # Sort rooms by building and room number
+        sorted_rooms = sorted(rooms, key=lambda x: (int(x["building"]), int(x["room"])))
 
-            if times:
-                # Format the times
-                formatted_times = []
-                for start, end in times:
-                    formatted_times.append(f"{start}-{end}")
-                self.detail_text.insert(tk.END, ", ".join(formatted_times))
-            else:
-                self.detail_text.insert(tk.END, "No vacant times")
-
-            self.detail_text.insert(tk.END, "\n")
+        # Display the rooms
+        for room_info in sorted_rooms:
+            building = room_info["building"]
+            room = room_info["room"]
+            capacity = room_info["capacity"]
+            self.detail_text.insert(
+                tk.END, f"Building {building}, Room {room} (Capacity: {capacity})\n"
+            )
 
 
 def main():

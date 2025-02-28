@@ -58,3 +58,6 @@ scratch.py
 
 # Ignore src/gui/gui_settings.json
 src/gui/gui_settings.json
+
+.cursorignore
+.cursor-readonly
