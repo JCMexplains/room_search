@@ -1,5 +1,9 @@
-# Define valid sessions
-VALID_SESSIONS = {1, 2, 3, 4}
+"""
+Constants for column types and valid values.
+"""
+
+# Valid session numbers
+VALID_SESSIONS = [1, 2, 3, 4]
 
 # Define column types
 dtypes = {
@@ -19,6 +23,5 @@ dtypes = {
     "start_date": str,
     "start_time": str,
     "end_time": str,
-    "term": int
+    "term": int,
 }
-
