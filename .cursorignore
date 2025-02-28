@@ -1,3 +1,11 @@
+# NOTE: The following files should be READ-ONLY
+# DO NOT MODIFY these files, but they can be read for understanding:
+src/core/constants/*.py
+config files
+Any file with "DO_NOT_MODIFY" in a comment
+data/
+
+# Files to completely ignore (won't be read or modified)
 # Python cache files
 __pycache__/
 **/__pycache__/
@@ -32,12 +40,8 @@ logs/
 .DS_Store
 Thumbs.db
 
-# The root room_finder.py file that we're no longer using
-/room_finder.py
-
-# Constants files that should not be edited
-src/core/constants/
-**/constants/
-**/*constants*.py
-
+.gitignore
+.isort.cfg
+.vscode
+*.code-workspace
 
