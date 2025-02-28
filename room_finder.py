@@ -1,9 +1,5 @@
-# This file is being deleted as its contents are being moved to room_finder.py
-
 from datetime import time
 from typing import List, Tuple
-
-from src.utils.date_utils import parse_time
 
 # Define which sessions overlap with each session
 # This follows the diagram in the image
@@ -21,6 +17,12 @@ SUMMER_SESSION_OVERLAPS = {
     2: [1, 2],  # Session 2 (first half) overlaps with Session 1 and itself
     3: [1, 3],  # Session 3 (second half) overlaps with Session 1 and itself
 }
+
+
+def parse_time(time_str):
+    """Parse a time string in HH:MM format to a time object"""
+    hours, minutes = map(int, time_str.split(":"))
+    return time(hour=hours, minute=minutes)
 
 
 def get_overlapping_sessions(session: int, is_summer: bool = False) -> List[int]:
