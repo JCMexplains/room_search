@@ -83,18 +83,15 @@ def find_vacant_rooms(
 ) -> Dict[str, Dict]:
 
     try:
-        # At the very start, verify TIME_BLOCKS
-        # print("TIME_BLOCKS type:", type(TIME_BLOCKS))
-        # print("TIME_BLOCKS sample:", list(TIME_BLOCKS)[:2])
 
         # Define column name mappings (original -> standardized)
         COLUMN_MAPPING = {
             "Term": "term",
             "Building": "building",
-            "Room Number": "room_number",  # Adjust if different in your CSV
-            "Room Cap": "room_cap",  # Adjust if different in your CSV
-            "Start Time": "start_time",  # Adjust if different in your CSV
-            "End Time": "end_time",  # Adjust if different in your CSV
+            "Room Number": "room_number",
+            "Room Cap": "room_cap",
+            "Start Time": "start_time",
+            "End Time": "end_time",
             "Days": "days",
         }
 
@@ -130,25 +127,6 @@ def find_vacant_rooms(
 
         # Filter data for the requested term
         filtered_df = df[df["term"] == term]
-        print(f"Found {len(filtered_df)} rows after filtering")
-
-        # Print sample of filtered data
-        # print("\nSample of filtered data:")
-        # print(
-        #     filtered_df[
-        #         [
-        #             "building",
-        #             "room_number",
-        #             "room_cap",
-        #             "start_time",
-        #             "end_time",
-        #             "days",
-        #         ]
-        #     ].head()
-        # )
-        # print("\nSample of days column after filtering:")
-        # print(filtered_df["days"].head())
-        # print("Days column type:", filtered_df["days"].dtype)
 
         # Create a set of occupied time slots for each room
         occupied_slots = {}
@@ -196,19 +174,12 @@ def find_vacant_rooms(
                 print(f"Row data: days={days_raw}, building={building}, room={room}")
                 continue
 
-        # print("\nOccupied slots sample:")
-        # # Print first few entries of occupied_slots
-        # for key in list(occupied_slots.keys())[:3]:
-        #     print(f"{key}: {occupied_slots[key]}")
-
         # Now create the vacant rooms dictionary
         vacant_rooms = {}
-        print("\nProcessing MY_ROOMS:", MY_ROOMS)  # Debug print
 
         for building, room in MY_ROOMS:
             try:
                 room_key = f"{building}-{room}"
-                print(f"\nProcessing room {room_key}")  # Debug print
 
                 # Get room capacity from constants
                 try:
@@ -223,19 +194,14 @@ def find_vacant_rooms(
                 vacant_times = {}
                 # Process each requested day
                 for day in days:
-                    print(f"  Checking day {day}")  # Debug print
                     vacant_times[day] = []  # Initialize empty list for this day
 
                     if room_key not in occupied_slots:
                         # Room has no occupancy data, all times are vacant
-                        print(
-                            f"    No occupancy data for {room_key} - marking all times vacant"
-                        )
                         vacant_times[day] = list(TIME_BLOCKS)
                     else:
                         # Get occupied times for this day
                         occupied = occupied_slots[room_key].get(day, [])
-                        print(f"    Found {len(occupied)} occupied times")
 
                         # Check each time block
                         for time_block in TIME_BLOCKS:
@@ -285,11 +251,9 @@ def find_vacant_rooms(
 
             final_rooms[str(room_key)] = final_room
 
-        print("\nFinal data structure verification:")
-        print(f"Number of rooms: {len(final_rooms)}")
         if final_rooms:
             sample_key = next(iter(final_rooms))
-            print(f"Sample final room: {sample_key}: {final_rooms[sample_key]}")
+            print(f"\nSample final room: {sample_key}: {final_rooms[sample_key]}")
 
         # Before returning, verify all time blocks are tuples
         for room_data in final_rooms.values():
@@ -297,12 +261,6 @@ def find_vacant_rooms(
                 for i, time_block in enumerate(day_times):
                     if not isinstance(time_block, tuple):
                         day_times[i] = tuple(time_block)
-
-        # Before returning, add one final verification
-        print("\nFinal verification before return:")
-        print(f"Type of return value: {type(final_rooms)}")
-        print(f"Keys in return value: {list(final_rooms.keys())}")
-        print(f"Sample value type: {type(final_rooms[next(iter(final_rooms))])}")
 
         # Store the return value first
         result = final_rooms
@@ -313,7 +271,6 @@ def find_vacant_rooms(
             isinstance(v, dict) for v in result.values()
         ), "Not all values are dictionaries!"
 
-        print("Final verification passed - returning dictionary")
         return result
 
     except Exception as e:
