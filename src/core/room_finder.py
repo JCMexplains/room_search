@@ -25,8 +25,17 @@ logging.basicConfig(
 )
 
 from src.core.constants.my_rooms import MY_ROOMS
-from src.core.constants.room_caps import get_room_cap
+from src.core.constants.room_caps import ROOM_CAPS
 from src.core.constants.time_blocks import TIME_BLOCKS
+
+
+def get_room_cap(building: int, room: int) -> int:
+    """Get room capacity, raises KeyError if not found"""
+    if (building, room) not in ROOM_CAPS:
+        raise KeyError(
+            f"Room {room} in building {building} not found in room capacity data"
+        )
+    return ROOM_CAPS[(building, room)]
 
 
 def parse_time(time_str: str) -> datetime:

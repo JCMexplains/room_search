@@ -25,5 +25,9 @@ ROOM_CAPS = {
 
 
 def get_room_cap(building: int, room: int) -> int:
-    """Get room capacity, return 0 if not found"""
-    return ROOM_CAPS.get((building, room), 0)
+    """Get room capacity, raises KeyError if not found"""
+    if (building, room) not in ROOM_CAPS:
+        raise KeyError(
+            f"Room {room} in building {building} not found in room capacity data"
+        )
+    return ROOM_CAPS[(building, room)]
