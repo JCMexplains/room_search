@@ -5,7 +5,6 @@ Room Finder Application
 A tool to find vacant rooms on campus.
 """
 
-import sys
 import tkinter as tk
 
 from src.gui.simple_gui import RoomFinderGUI

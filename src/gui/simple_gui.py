@@ -7,13 +7,7 @@ from tkinter import messagebox, ttk
 import pandas as pd
 
 from src.core.constants.time_blocks import TIME_BLOCKS
-from src.core.room_finder import (
-    PROJECT_ROOT,
-    find_vacant_rooms,
-    get_formatted_blocks,
-    parse_time,
-)
-from src.utils.settings import load_settings, save_settings
+from src.core.room_finder import PROJECT_ROOT, find_vacant_rooms, parse_time
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
