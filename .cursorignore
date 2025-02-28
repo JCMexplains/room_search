@@ -32,4 +32,12 @@ logs/
 .DS_Store
 Thumbs.db
 
+# The root room_finder.py file that we're no longer using
+/room_finder.py
+
+# Constants files that should not be edited
+src/core/constants/
+**/constants/
+**/*constants*.py
+
 
