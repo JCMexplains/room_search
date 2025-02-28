@@ -22,12 +22,3 @@ ROOM_CAPS = {
     (15, 103): 25,
     (22, 152): 35,
 }
-
-
-def get_room_cap(building: int, room: int) -> int:
-    """Get room capacity, raises KeyError if not found"""
-    if (building, room) not in ROOM_CAPS:
-        raise KeyError(
-            f"Room {room} in building {building} not found in room capacity data"
-        )
-    return ROOM_CAPS[(building, room)]
