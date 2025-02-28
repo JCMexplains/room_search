@@ -1,15 +1,18 @@
+#!/usr/bin/env python3
+"""
+Room Finder Application
+-----------------------
+A tool to find vacant rooms on campus.
+"""
+
 import sys
 import tkinter as tk
-from pathlib import Path
-
-# Add the project root to Python path
-project_root = Path(__file__).parent
-sys.path.append(str(project_root))
 
 from src.gui.simple_gui import RoomFinderGUI
 
 
 def main():
+    """Main entry point for the application"""
     root = tk.Tk()
     app = RoomFinderGUI(root)
     root.mainloop()

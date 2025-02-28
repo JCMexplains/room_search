@@ -1,15 +1,18 @@
 import glob
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 import pandas as pd
 
 from src.core.constants.time_blocks import TIME_BLOCKS
-from src.core.room_finder import PROJECT_ROOT, find_vacant_rooms, get_formatted_blocks
-from src.utils.date_utils import parse_time
+from src.core.room_finder import (
+    PROJECT_ROOT,
+    find_vacant_rooms,
+    get_formatted_blocks,
+    parse_time,
+)
 from src.utils.settings import load_settings, save_settings
-from src.core.constants.term_session_dates import get_overlapping_sessions, is_summer_term
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -43,141 +46,193 @@ class RoomFinderGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Room Finder")
+        self.root.geometry("800x600")
 
-        # Get valid terms from CSV
-        self.valid_terms = get_valid_terms()
-        self.valid_sessions = [1, 2, 3, 4]
+        # Set up the main frame
+        self.main_frame = ttk.Frame(root, padding="10")
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Load saved settings
-        settings = load_settings()
-
-        # Term/Session Frame
-        frame = ttk.LabelFrame(root, text="Term & Session", padding=10)
-        frame.pack(fill="x", padx=5, pady=5)
-
-        # Term Dropdown
-        ttk.Label(frame, text="Term:").pack(side="left")
-        self.term_var = tk.StringVar(value=settings["term"] or str(self.valid_terms[0]))
-        term_dropdown = ttk.Combobox(
-            frame,
-            textvariable=self.term_var,
-            values=self.valid_terms,
-            width=10,
-            state="readonly",
+        # Create input frame
+        self.input_frame = ttk.LabelFrame(
+            self.main_frame, text="Search Parameters", padding="10"
         )
-        term_dropdown.pack(side="left", padx=5)
+        self.input_frame.pack(fill=tk.X, pady=10)
 
-        # Session Dropdown
-        ttk.Label(frame, text="Session:").pack(side="left")
-        self.session_var = tk.StringVar(value=settings["session"])
-        session_dropdown = ttk.Combobox(
-            frame,
-            textvariable=self.session_var,
-            values=self.valid_sessions,
-            width=5,
-            state="readonly",
+        # Term input
+        ttk.Label(self.input_frame, text="Term:").grid(
+            row=0, column=0, sticky=tk.W, pady=5
         )
-        session_dropdown.pack(side="left", padx=5)
+        self.term_var = tk.StringVar(value="2231")  # Default to Fall 2023
+        ttk.Entry(self.input_frame, textvariable=self.term_var, width=10).grid(
+            row=0, column=1, sticky=tk.W, pady=5
+        )
 
-        # Days Frame
-        days_frame = ttk.LabelFrame(root, text="Days", padding=10)
-        days_frame.pack(fill="x", padx=5, pady=5)
+        # Days selection
+        ttk.Label(self.input_frame, text="Days:").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        self.days_frame = ttk.Frame(self.input_frame)
+        self.days_frame.grid(row=1, column=1, sticky=tk.W, pady=5)
 
         self.day_vars = {}
-        for day in "MTWRFS":
-            self.day_vars[day] = tk.BooleanVar(value=settings["days"].get(day, True))
-            ttk.Checkbutton(days_frame, text=day, variable=self.day_vars[day]).pack(
-                side="left"
-            )
+        days = [
+            ("Monday", "M"),
+            ("Tuesday", "T"),
+            ("Wednesday", "W"),
+            ("Thursday", "R"),
+            ("Friday", "F"),
+            ("Saturday", "S"),
+        ]
+        for i, (day_name, day_code) in enumerate(days):
+            self.day_vars[day_code] = tk.BooleanVar(value=False)
+            ttk.Checkbutton(
+                self.days_frame, text=day_name, variable=self.day_vars[day_code]
+            ).grid(row=0, column=i, padx=5)
 
-        # Search Button
-        ttk.Button(root, text="Find Vacant Rooms", command=self.search).pack(pady=10)
+        # Search button
+        ttk.Button(self.input_frame, text="Search", command=self.search_rooms).grid(
+            row=2, column=0, columnspan=2, pady=10
+        )
 
-        # Results
-        self.results = tk.Text(root, height=20, width=60)
-        self.results.pack(padx=5, pady=5, fill="both", expand=True)
+        # Results frame
+        self.results_frame = ttk.LabelFrame(
+            self.main_frame, text="Results", padding="10"
+        )
+        self.results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
-    def search(self):
+        # Create a frame for the treeview and scrollbar
+        tree_frame = ttk.Frame(self.results_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Create the treeview
+        self.tree = ttk.Treeview(tree_frame)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Add a scrollbar
+        scrollbar = ttk.Scrollbar(
+            tree_frame, orient="vertical", command=self.tree.yview
+        )
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        # Configure the treeview columns
+        self.tree["columns"] = ("building", "room", "capacity")
+        self.tree.column("#0", width=0, stretch=tk.NO)  # Hide the first column
+        self.tree.column("building", anchor=tk.W, width=80)
+        self.tree.column("room", anchor=tk.W, width=80)
+        self.tree.column("capacity", anchor=tk.W, width=80)
+
+        self.tree.heading("building", text="Building")
+        self.tree.heading("room", text="Room")
+        self.tree.heading("capacity", text="Capacity")
+
+        # Bind the treeview selection event
+        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        # Create a frame for displaying room details
+        self.detail_frame = ttk.LabelFrame(
+            self.main_frame, text="Room Details", padding="10"
+        )
+        self.detail_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # Text widget for displaying room details
+        self.detail_text = tk.Text(self.detail_frame, wrap=tk.WORD, height=10)
+        self.detail_text.pack(fill=tk.BOTH, expand=True)
+
+        # Status bar
+        self.status_var = tk.StringVar()
+        self.status_bar = ttk.Label(
+            root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W
+        )
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Store the search results
+        self.results = {}
+
+    def search_rooms(self):
+        """Search for vacant rooms based on user input"""
         try:
-            df = load_data()  # Use the same standardized loading function
-            term = self.term_var.get()
-            session = self.session_var.get()
-            days_state = {day: var.get() for day, var in self.day_vars.items()}
+            # Get term from input
+            term = int(self.term_var.get())
 
-            # Save current settings before search
-            save_settings(term, session, days_state)
+            # Get selected days
+            selected_days = [day for day, var in self.day_vars.items() if var.get()]
+            if not selected_days:
+                messagebox.showwarning("Warning", "Please select at least one day")
+                return
 
-            # Convert term and session to int for the search
-            term = int(term)
-            session = int(session)
-            days = [day for day, var in self.day_vars.items() if var.get()]
+            # Update status
+            self.status_var.set("Searching for vacant rooms...")
+            self.root.update_idletasks()
 
-            # Update this to use PROJECT_ROOT
-            vacant_rooms = find_vacant_rooms(
-                term=term,
-                session=session,
-                days=days,
-                data_file=str(
-                    PROJECT_ROOT / "data" / "data.csv"
-                ),  # Use absolute path here
-            )
+            # Call the find_vacant_rooms function
+            self.results = find_vacant_rooms(term, selected_days)
 
-            # Get all possible time blocks from constants
-            all_blocks = [
-                (parse_time(start), parse_time(end)) for start, end in TIME_BLOCKS
-            ]
+            # Clear the treeview
+            for item in self.tree.get_children():
+                self.tree.delete(item)
 
-            # Display results with explanation header
-            self.results.delete(1.0, tk.END)
-
-            # Add explanation header
-            self.results.insert(tk.END, "Room Availability Display:\n")
-            self.results.insert(
-                tk.END,
-                "- Times shown (e.g., '08:00-09:15') indicate the room is VACANT\n",
-            )
-            self.results.insert(
-                tk.END, "- Blank spaces indicate the room is OCCUPIED\n\n"
-            )
-
-            # Print header with time blocks
-            header_times = [
-                f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}   "
-                for block in all_blocks
-            ]
-            header_times[-1] = header_times[
-                -1
-            ].rstrip()  # Remove padding from last block
-            self.results.insert(tk.END, "Times: " + "".join(header_times) + "\n")
-            self.results.insert(tk.END, "-" * (len(header_times) * 14 + 20) + "\n")
-
-            for room_key, room_data in vacant_rooms.items():
+            # Populate the treeview with results
+            for room_key, room_data in self.results.items():
                 building, room = room_key.split("-")
-                self.results.insert(
-                    tk.END,
-                    f"\nBuilding {building}, Room {room} (Cap: {room_data['capacity']}):\n",
+                capacity = room_data["capacity"]
+                self.tree.insert(
+                    "", tk.END, values=(building, room, capacity), iid=room_key
                 )
-                for day, times in room_data["vacant_times"].items():
-                    formatted_blocks = get_formatted_blocks(times, all_blocks)
-                    print(
-                        "Blocks Set:", {block for block in all_blocks if block in times}
-                    )
-                    print("All Blocks:", all_blocks)
-                    self.results.insert(
-                        tk.END, f"{day:<6}: {''.join(formatted_blocks)}\n"
-                    )
-        except Exception as e:
-            print(f"Error searching: {e}")
 
-    def update_session_info(self):
-        term = int(self.term_var.get())
-        session = int(self.session_var.get())
-        is_summer = is_summer_term(term)
-        overlapping_sessions = get_overlapping_sessions(session, is_summer)
-        
-        # Update display with overlapping sessions
-        session_info = f"Session {session} overlaps with sessions: {', '.join(map(str, overlapping_sessions))}"
-        self.session_info_label.config(text=session_info)
+            # Update status
+            self.status_var.set(f"Found {len(self.results)} rooms")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            self.status_var.set("Error occurred during search")
+
+    def on_tree_select(self, event):
+        """Handle treeview selection event"""
+        selected_items = self.tree.selection()
+        if not selected_items:
+            return
+
+        room_key = selected_items[0]
+        room_data = self.results.get(room_key)
+        if not room_data:
+            return
+
+        # Clear the detail text
+        self.detail_text.delete(1.0, tk.END)
+
+        # Get building and room from the key
+        building, room = room_key.split("-")
+
+        # Display room details
+        self.detail_text.insert(tk.END, f"Building: {building}\n")
+        self.detail_text.insert(tk.END, f"Room: {room}\n")
+        self.detail_text.insert(tk.END, f"Capacity: {room_data['capacity']}\n\n")
+
+        # Display vacant times for each day
+        self.detail_text.insert(tk.END, "Vacant Times:\n")
+        for day, times in room_data["vacant_times"].items():
+            day_names = {
+                "M": "Monday",
+                "T": "Tuesday",
+                "W": "Wednesday",
+                "R": "Thursday",
+                "F": "Friday",
+                "S": "Saturday",
+            }
+            day_name = day_names.get(day, day)
+            self.detail_text.insert(tk.END, f"{day_name}: ")
+
+            if times:
+                # Format the times
+                formatted_times = []
+                for start, end in times:
+                    formatted_times.append(f"{start}-{end}")
+                self.detail_text.insert(tk.END, ", ".join(formatted_times))
+            else:
+                self.detail_text.insert(tk.END, "No vacant times")
+
+            self.detail_text.insert(tk.END, "\n")
 
 
 def main():
