@@ -329,23 +329,39 @@ def overlaps(start1: str, end1: str, start2: str, end2: str) -> bool:
 
 
 def get_formatted_blocks(blocks, all_blocks):
-    """Convert time blocks to formatted strings, with blanks for occupied times"""
+    """
+    Convert time blocks to formatted strings, with blanks for occupied times.
+
+    Args:
+        blocks: List of vacant time blocks as (start, end) tuples
+        all_blocks: List of all possible time blocks
+
+    Returns:
+        List of formatted strings representing vacant and occupied times
+    """
     formatted = []
 
     # Convert blocks to comparable format
-    blocks_set = {
+    vacant_blocks_set = {
         (parse_time(start).time(), parse_time(end).time()) for start, end in blocks
     }
 
     for block in all_blocks:
-        if any(is_conflict(block, class_block) for class_block in blocks_set):
-            # Room is occupied - show blank space
-            formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
-        else:
+        # Check if this time block is in the list of vacant blocks
+        is_vacant = any(
+            block[0].time() == vacant_start and block[1].time() == vacant_end
+            for vacant_start, vacant_end in vacant_blocks_set
+        )
+
+        if is_vacant:
             # Room is vacant - show the time
             formatted.append(
                 f"{block[0].strftime('%H:%M')}-{block[1].strftime('%H:%M')}"
             )
+        else:
+            # Room is occupied - show blank space
+            formatted.append(" " * 11)  # Same width as "HH:MM-HH:MM"
+
         formatted.append("   ")  # Add 3 spaces of padding between blocks
 
     # Remove the trailing padding from the last block

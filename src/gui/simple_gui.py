@@ -34,12 +34,18 @@ def load_data():
 
 
 def get_valid_terms():
+    """Get a list of valid terms from the data file"""
     try:
         df = load_data()
-        return sorted(df["term"].unique().tolist())
+        if "term" in df.columns:
+            terms = sorted(df["term"].unique().tolist())
+            return [str(term) for term in terms]  # Convert to strings for the dropdown
+        else:
+            print("Warning: 'term' column not found in data file")
+            return ["2231"]  # Default fallback
     except Exception as e:
-        print(f"Error loading data: {e}")
-        return []
+        print(f"Error loading terms: {e}")
+        return ["2231"]  # Default fallback
 
 
 class RoomFinderGUI:
@@ -58,14 +64,32 @@ class RoomFinderGUI:
         )
         self.input_frame.pack(fill=tk.X, pady=10)
 
-        # Term input
+        # Term input (dropdown)
         ttk.Label(self.input_frame, text="Term:").grid(
             row=0, column=0, sticky=tk.W, pady=5
         )
-        self.term_var = tk.StringVar(value="2231")  # Default to Fall 2023
-        ttk.Entry(self.input_frame, textvariable=self.term_var, width=10).grid(
-            row=0, column=1, sticky=tk.W, pady=5
+
+        # Get available terms
+        self.available_terms = get_valid_terms()
+
+        # Create StringVar for the term dropdown
+        self.term_var = tk.StringVar()
+        if self.available_terms:
+            self.term_var.set(
+                self.available_terms[0]
+            )  # Set default to first available term
+        else:
+            self.term_var.set("2231")  # Fallback default
+
+        # Create the dropdown
+        self.term_dropdown = ttk.Combobox(
+            self.input_frame,
+            textvariable=self.term_var,
+            values=self.available_terms,
+            width=10,
+            state="readonly",  # Make it read-only so users can only select from the list
         )
+        self.term_dropdown.grid(row=0, column=1, sticky=tk.W, pady=5)
 
         # Days selection
         ttk.Label(self.input_frame, text="Days:").grid(
@@ -149,10 +173,15 @@ class RoomFinderGUI:
         # Store the search results
         self.results = {}
 
+        # Set initial status
+        self.status_var.set(
+            f"Ready. Found {len(self.available_terms)} terms in data file."
+        )
+
     def search_rooms(self):
         """Search for vacant rooms based on user input"""
         try:
-            # Get term from input
+            # Get term from dropdown
             term = int(self.term_var.get())
 
             # Get selected days
