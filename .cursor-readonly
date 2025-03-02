@@ -1,0 +1,11 @@
+# Files listed here can be read by the AI but should not be modified
+# One pattern per line
+
+# Constants files
+src/core/constants/*.py
+
+# Configuration files
+config.ini
+settings.json
+
+# Add other files or patterns as needed 
